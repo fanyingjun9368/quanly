@@ -1,6 +1,6 @@
 {
   "name": "apikey-manager-backend",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Backend for the API Key Manager App using MongoDB",
   "main": "index.js",
   "scripts": {
