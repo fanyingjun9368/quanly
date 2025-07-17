@@ -77,7 +77,7 @@ app.get('/api/keys', authMiddleware, async (req, res) => {
 
 app.post('/api/keys', authMiddleware, async (req, res) => {
     try {
-        const newKey = { ...req.body, user_id: req.userId, favorite: false }; // Thêm favorite: false
+        const newKey = { ...req.body, user_id: req.userId, favorite: false };
         const result = await keysCollection.insertOne(newKey);
         res.status(201).json(result);
     } catch (err) {
@@ -85,46 +85,38 @@ app.post('/api/keys', authMiddleware, async (req, res) => {
     }
 });
 
-// Endpoint để cập nhật ghi chú
-app.put('/api/keys/:id/notes', authMiddleware, async (req, res) => {
-    const { notes } = req.body;
-    if (notes === undefined) {
-        return res.status(400).json({ error: "notes field is required." });
+// --- FIX: Hợp nhất các endpoint cập nhật thành một ---
+app.put('/api/keys/:id', authMiddleware, async (req, res) => {
+    const { notes, favorite } = req.body;
+    
+    if (notes === undefined && favorite === undefined) {
+        return res.status(400).json({ error: "Either 'notes' or 'favorite' field is required for update." });
     }
+
+    const updateFields = {};
+    if (notes !== undefined) {
+        updateFields.notes = notes;
+    }
+    if (favorite !== undefined) {
+        if (typeof favorite !== 'boolean') {
+            return res.status(400).json({ error: "favorite field must be a boolean." });
+        }
+        updateFields.favorite = favorite;
+    }
+
     try {
         const result = await keysCollection.updateOne(
             { id: req.params.id, user_id: req.userId },
-            { $set: { notes: notes } }
+            { $set: updateFields }
         );
         if (result.matchedCount === 0) {
             return res.status(404).json({ error: "Key not found or user not authorized" });
         }
-        res.json({ message: 'Notes updated successfully' });
+        res.json({ message: 'Updated successfully' });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
 });
-
-// Endpoint để cập nhật trạng thái yêu thích
-app.put('/api/keys/:id/favorite', authMiddleware, async (req, res) => {
-    const { favorite } = req.body;
-    if (typeof favorite !== 'boolean') {
-        return res.status(400).json({ error: "favorite field must be a boolean." });
-    }
-    try {
-        const result = await keysCollection.updateOne(
-            { id: req.params.id, user_id: req.userId },
-            { $set: { favorite: favorite } }
-        );
-        if (result.matchedCount === 0) {
-            return res.status(404).json({ error: "Key not found or user not authorized" });
-        }
-        res.json({ message: 'Favorite status updated successfully' });
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
-});
-
 
 app.delete('/api/keys/:id', authMiddleware, async (req, res) => {
     try {
