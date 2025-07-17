@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -86,7 +85,7 @@
                 <textarea class="card-notes w-full bg-gray-50 p-2 rounded-md text-sm text-gray-800 resize-none border border-gray-200 focus:ring-1 focus:ring-indigo-500" rows="2" placeholder="Thêm ghi chú..."></textarea>
             </div>
             <div class="flex items-center justify-end space-x-2 mt-4">
-                <button class="check-btn btn-gradient text-white text-xs font-bold py-2 px-3 rounded-lg transition duration-300 flex items-center gap-1"><i class="fas fa-sync-alt"></i><span class="btn-text">Kiểm tra</span><div class="loader hidden"></div></button>
+                <button class="check-btn btn-gradient text-white text-xs font-bold py-2 px-3 rounded-lg transition duration-300 flex items-center gap-1"><i class="fas fa-sync-alt"></i><span class="btn-text">Kiểm tra</span><div class="loader hidden" style="width: 16px; height: 16px; border-width: 2px; border-color: white; border-top-color: transparent;"></div></button>
                 <button class="delete-btn bg-gray-200 hover:bg-red-200 text-gray-700 hover:text-red-800 text-xs font-bold py-2 px-3 rounded-lg transition"><i class="fas fa-trash"></i></button>
             </div>
         </div>
@@ -97,8 +96,8 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
         // --- Cấu hình ---
-        const GOOGLE_CLIENT_ID = '833528835955-t7pai7q2tb836dqggme3h3560n58s6au.apps.googleusercontent.com'; // Thay bằng Client ID của bạn
-        const BACKEND_URL = 'https://quanly-web.onrender.com/'; // Thay bằng URL backend trên Render
+        const GOOGLE_CLIENT_ID = '833528835955-t7pai7q2tb836dqggme3h3560n58s6au.apps.googleusercontent.com'; // Đã cập nhật
+        const BACKEND_URL = 'https://quanly-web.onrender.com'; // Đã cập nhật
         let idToken = null;
 
         const API_PROVIDERS = {
@@ -112,12 +111,37 @@
         async function apiFetch(endpoint, options = {}) {
             if (!idToken) throw new Error("User not authenticated");
             const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}`, ...options.headers };
-            const response = await fetch(`${BACKEND_URL}${endpoint}`, { ...options, headers });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            
+            let response;
+            try {
+                response = await fetch(`${BACKEND_URL}${endpoint}`, { ...options, headers });
+            } catch (networkError) {
+                console.error("Network error:", networkError);
+                throw new Error("Lỗi mạng. Không thể kết nối đến máy chủ.");
             }
-            return response.status === 204 ? null : response.json();
+
+            if (!response.ok) {
+                let errorMsg = `Lỗi HTTP! Mã: ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    errorMsg = errorData.error || JSON.stringify(errorData);
+                } catch (e) {
+                    errorMsg = `Lỗi máy chủ (Mã: ${response.status}). Không thể đọc phản hồi.`;
+                }
+                throw new Error(errorMsg);
+            }
+
+            if (response.status === 204) return null;
+
+            try {
+                return await response.json();
+            } catch (e) {
+                if (e instanceof SyntaxError) {
+                    console.error("Failed to parse JSON response. The backend might have returned an HTML page.", e);
+                    throw new Error("Lỗi giao tiếp: Backend trả về dữ liệu không hợp lệ (HTML). Vui lòng kiểm tra lại cấu hình BACKEND_URL.");
+                }
+                throw e;
+            }
         }
 
         // --- Xác thực Google & Quản lý UI ---
