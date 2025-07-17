@@ -1,7 +1,7 @@
 {
   "name": "apikey-manager-backend",
-  "version": "1.0.0",
-  "description": "Backend for the API Key Manager App",
+  "version": "2.0.0",
+  "description": "Backend for the API Key Manager App using MongoDB",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -10,6 +10,6 @@
     "cors": "^2.8.5",
     "express": "^4.19.2",
     "google-auth-library": "^9.11.0",
-    "sqlite3": "^5.1.7"
+    "mongodb": "^6.7.0"
   }
 }
