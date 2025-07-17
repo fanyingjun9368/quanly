@@ -1,1 +1,319 @@
 
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trình Quản Lý API Key</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Be Vietnam Pro', sans-serif; }
+        .key-card { transition: all 0.3s ease-in-out; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .status-active { background-color: #22c55e; }
+        .status-invalid { background-color: #ef4444; }
+        .status-limited { background-color: #f59e0b; }
+        .status-unknown { background-color: #9ca3af; }
+        .status-checking { background-color: #3b82f6; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        .toast { visibility: hidden; opacity: 0; transition: visibility 0s 0.5s, opacity 0.5s linear; }
+        .toast.show { visibility: visible; opacity: 1; transition: opacity 0.5s linear; }
+        .btn-gradient { background-size: 200% auto; transition: background-position 0.5s ease; }
+        .btn-gradient:hover { background-position: right center; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container mx-auto p-4 md:p-8 max-w-6xl">
+        <header id="app-header" class="flex justify-between items-center mb-10 hidden">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Trình Quản Lý API Key</h1>
+            <div id="user-info" class="flex items-center gap-4">
+                <div class="text-right"><p id="user-name" class="font-semibold text-gray-900"></p></div>
+                <img id="user-avatar" class="w-12 h-12 rounded-full" src="" alt="User Avatar">
+                <button id="sign-out-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition">Đăng xuất</button>
+            </div>
+        </header>
+
+        <div id="login-view" class="text-center py-20">
+             <h1 class="text-4xl font-bold text-gray-900">Chào mừng bạn!</h1>
+            <p class="text-gray-600 mt-2 mb-8">Đăng nhập bằng tài khoản Google để quản lý API key của bạn một cách an toàn.</p>
+            <div id="gsi-button" class="inline-block"></div>
+        </div>
+
+        <main id="app-content" class="hidden">
+            <div class="bg-white p-6 rounded-xl shadow-lg mb-10">
+                <h2 class="text-xl font-semibold mb-4 text-gray-900">Thêm Key Mới</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2">
+                        <label for="api-key-input" class="block text-sm font-medium text-gray-600 mb-1">Dán API Key vào đây</label>
+                        <div class="relative">
+                            <input type="text" id="api-key-input" placeholder="Key sẽ được tự động nhận diện..." class="w-full bg-gray-50 border-gray-300 rounded-lg py-3 pl-4 pr-10 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm">
+                            <div id="detected-api-logo" class="absolute inset-y-0 right-0 flex items-center pr-3"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="key-name-input" class="block text-sm font-medium text-gray-600 mb-1">Tên gợi nhớ</label>
+                        <input type="text" id="key-name-input" placeholder="Ví dụ: Project hình ảnh" class="w-full bg-gray-50 border-gray-300 rounded-lg py-3 px-4 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                </div>
+                <button id="add-key-btn" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    <i class="fas fa-plus-circle mr-2"></i>Lưu Key
+                </button>
+            </div>
+            <div>
+                <h2 class="text-2xl font-semibold mb-6 text-center text-gray-900">Danh sách API Keys</h2>
+                <div id="key-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+        </main>
+    </div>
+
+    <template id="key-card-template">
+        <div class="key-card bg-white p-5 rounded-xl shadow-md flex flex-col">
+            <div class="flex justify-between items-start mb-3">
+                <h3 class="card-name text-lg font-bold text-gray-900 break-all"></h3>
+                <div class="card-logo w-8 h-8 flex-shrink-0"></div>
+            </div>
+            <p class="card-masked-key font-mono text-sm text-gray-500 break-all"></p>
+            <div class="flex items-center gap-2 mt-4">
+                <div class="status-dot"></div>
+                <p class="card-status-text text-sm text-gray-600 flex-grow">Chưa kiểm tra</p>
+            </div>
+            <div class="mt-4 flex-grow">
+                <label class="block text-xs font-medium text-gray-500 mb-1">Ghi chú</label>
+                <textarea class="card-notes w-full bg-gray-50 p-2 rounded-md text-sm text-gray-800 resize-none border border-gray-200 focus:ring-1 focus:ring-indigo-500" rows="2" placeholder="Thêm ghi chú..."></textarea>
+            </div>
+            <div class="flex items-center justify-end space-x-2 mt-4">
+                <button class="check-btn btn-gradient text-white text-xs font-bold py-2 px-3 rounded-lg transition duration-300 flex items-center gap-1"><i class="fas fa-sync-alt"></i><span class="btn-text">Kiểm tra</span><div class="loader hidden"></div></button>
+                <button class="delete-btn bg-gray-200 hover:bg-red-200 text-gray-700 hover:text-red-800 text-xs font-bold py-2 px-3 rounded-lg transition"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    </template>
+
+    <div id="toast" class="toast fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-800 text-white py-2 px-5 rounded-lg shadow-lg"></div>
+    
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        // --- Cấu hình ---
+        const GOOGLE_CLIENT_ID = '833528835955-t7pai7q2tb836dqggme3h3560n58s6au.apps.googleusercontent.com'; // Thay bằng Client ID của bạn
+        const BACKEND_URL = 'https://quanly-web.onrender.com/'; // Thay bằng URL backend trên Render
+        let idToken = null;
+
+        const API_PROVIDERS = {
+            'google-ai': { name: 'Google AI', regex: /^AIzaSy[A-Za-z0-9_-]{33}$/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full text-blue-500"><path d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.18,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.18,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.18,22C17.6,22 21.54,18.33 21.54,12.81C21.54,11.76 21.45,11.44 21.35,11.1Z"/></svg>`, gradient: 'from-blue-500 to-green-500' },
+            'hugging-face': { name: 'Hugging Face', regex: /^hf_[A-Za-z0-9]{30,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full text-yellow-500"><path d="M20.25 14.183C20.25 13.202 19.431 12.383 18.45 12.383C17.469 12.383 16.65 13.202 16.65 14.183C16.65 15.164 17.469 15.983 18.45 15.983C19.431 15.983 20.25 15.164 20.25 14.183ZM15.15 14.183C15.15 13.202 14.331 12.383 13.35 12.383C12.369 12.383 11.55 13.202 11.55 14.183C11.55 15.164 12.369 15.983 13.35 15.983C14.331 15.983 15.15 15.164 15.15 14.183ZM12 2C17.523 2 22 6.477 22 12C22 17.523 17.523 22 12 22C6.477 22 2 17.523 2 12C2 6.477 6.477 2 12 2ZM12 4C7.582 4 4 7.582 4 12C4 16.418 7.582 20 12 20C16.418 20 20 16.418 20 12C20 7.582 16.418 4 12 4ZM8.85 14.183C8.85 13.202 8.031 12.383 7.05 12.383C6.069 12.383 5.25 13.202 5.25 14.183C5.25 15.164 6.069 15.983 7.05 15.983C8.031 15.983 8.85 15.164 8.85 14.183Z"/></svg>`, gradient: 'from-yellow-500 to-orange-500' },
+            'stability-ai': { name: 'Stability AI', regex: /^sk-[A-Za-z0-9]{40,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full text-purple-500"><path d="M12 2L9.429 9.429 2 12l7.429 2.571L12 22l2.571-7.429L22 12l-7.429-2.571z"/></svg>`, gradient: 'from-purple-500 to-pink-500' },
+            'openai': { name: 'OpenAI', regex: /^sk-[A-Za-z0-9]{20,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-full h-full text-teal-500"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>`, gradient: 'from-teal-500 to-cyan-500' },
+        };
+
+        // --- Logic Giao tiếp Backend ---
+        async function apiFetch(endpoint, options = {}) {
+            if (!idToken) throw new Error("User not authenticated");
+            const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}`, ...options.headers };
+            const response = await fetch(`${BACKEND_URL}${endpoint}`, { ...options, headers });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+            return response.status === 204 ? null : response.json();
+        }
+
+        // --- Xác thực Google & Quản lý UI ---
+        window.onload = function () {
+            if (GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID' || BACKEND_URL === 'YOUR_RENDER_BACKEND_URL') {
+                document.getElementById('login-view').innerHTML = `<h2 class="text-2xl text-red-500 font-bold">Lỗi Cấu Hình Frontend</h2><p class="text-gray-600 mt-2">Vui lòng điền GOOGLE_CLIENT_ID và BACKEND_URL trong tệp HTML.</p>`;
+                return;
+            }
+            google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredentialResponse });
+            google.accounts.id.renderButton(document.getElementById("gsi-button"), { theme: "outline", size: "large", text: "signin_with", shape: "rectangular" });
+        };
+
+        function handleCredentialResponse(response) {
+            idToken = response.credential;
+            const userProfile = JSON.parse(atob(idToken.split('.')[1]));
+            document.getElementById('user-name').textContent = userProfile.name;
+            document.getElementById('user-avatar').src = userProfile.picture;
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('app-header').classList.remove('hidden');
+            document.getElementById('app-content').classList.remove('hidden');
+            loadKeys();
+        }
+
+        document.getElementById('sign-out-btn').addEventListener('click', () => {
+            idToken = null;
+            google.accounts.id.disableAutoSelect();
+            document.getElementById('login-view').classList.remove('hidden');
+            document.getElementById('app-header').classList.add('hidden');
+            document.getElementById('app-content').classList.add('hidden');
+        });
+
+        // --- Logic CRUD & Hiển thị ---
+        const apiKeyInput = document.getElementById('api-key-input');
+        const keyNameInput = document.getElementById('key-name-input');
+        const addKeyBtn = document.getElementById('add-key-btn');
+        const keyListDiv = document.getElementById('key-list');
+        const detectedApiLogo = document.getElementById('detected-api-logo');
+        const keyCardTemplate = document.getElementById('key-card-template');
+
+        async function loadKeys() {
+            try {
+                const keys = await apiFetch('/api/keys');
+                renderKeys(keys);
+            } catch (error) {
+                showToast(`Lỗi tải keys: ${error.message}`);
+            }
+        }
+
+        function renderKeys(keys) {
+            keyListDiv.innerHTML = '';
+            if (!keys || keys.length === 0) {
+                keyListDiv.innerHTML = `<p class="text-gray-500 col-span-full text-center">Bạn chưa có API key nào.</p>`;
+                return;
+            }
+            keys.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).forEach(key => {
+                const card = keyCardTemplate.content.cloneNode(true).firstElementChild;
+                const provider = API_PROVIDERS[key.type] || {};
+                card.dataset.id = key.id;
+                card.dataset.value = key.value;
+                card.dataset.type = key.type;
+                card.querySelector('.card-name').textContent = key.name;
+                card.querySelector('.card-logo').innerHTML = provider.logo || '';
+                card.querySelector('.card-masked-key').textContent = `${key.value.substring(0, 4)}...${key.value.substring(key.value.length - 4)}`;
+                const notesEl = card.querySelector('.card-notes');
+                notesEl.value = key.notes || '';
+                notesEl.dataset.keyId = key.id;
+                const checkBtn = card.querySelector('.check-btn');
+                checkBtn.classList.add(`bg-gradient-to-r`, provider.gradient || 'from-gray-500 to-gray-600');
+                updateCardStatus(card, 'unknown', 'Chưa kiểm tra');
+                keyListDiv.appendChild(card);
+            });
+        }
+
+        function updateCardStatus(card, status, message) {
+            const statusDot = card.querySelector('.status-dot');
+            const statusText = card.querySelector('.card-status-text');
+            statusDot.className = 'status-dot';
+            statusDot.classList.add(`status-${status || 'unknown'}`);
+            statusText.textContent = message || 'Chưa kiểm tra';
+        }
+
+        function detectApiKeyType(key) {
+            for (const type in API_PROVIDERS) {
+                if (API_PROVIDERS[type].regex.test(key)) {
+                    if (type === 'openai' && API_PROVIDERS['stability-ai'].regex.test(key)) continue;
+                    return type;
+                }
+            }
+            return 'unknown';
+        }
+
+        function validateForm() {
+            const key = apiKeyInput.value.trim();
+            const name = keyNameInput.value.trim();
+            const type = detectApiKeyType(key);
+            detectedApiLogo.innerHTML = type !== 'unknown' ? API_PROVIDERS[type].logo : '';
+            addKeyBtn.disabled = !(key && name && type !== 'unknown');
+        }
+        apiKeyInput.addEventListener('input', validateForm);
+        keyNameInput.addEventListener('input', validateForm);
+
+        addKeyBtn.addEventListener('click', async () => {
+            const newKey = {
+                id: crypto.randomUUID(),
+                name: keyNameInput.value.trim(),
+                value: apiKeyInput.value.trim(),
+                type: detectApiKeyType(apiKeyInput.value.trim()),
+                notes: '',
+                created_at: new Date().toISOString()
+            };
+            try {
+                await apiFetch('/api/keys', { method: 'POST', body: JSON.stringify(newKey) });
+                showToast("Đã thêm key thành công!");
+                apiKeyInput.value = ''; keyNameInput.value = '';
+                validateForm();
+                loadKeys();
+            } catch (error) {
+                showToast(`Lỗi: ${error.message}`);
+            }
+        });
+
+        keyListDiv.addEventListener('click', async (e) => {
+            const card = e.target.closest('.key-card');
+            if (!card) return;
+            const keyId = card.dataset.id;
+            if (e.target.closest('.delete-btn')) {
+                if (confirm('Bạn có chắc chắn muốn xóa API key này?')) {
+                    try {
+                        await apiFetch(`/api/keys/${keyId}`, { method: 'DELETE' });
+                        showToast('Đã xóa key.');
+                        loadKeys();
+                    } catch (error) {
+                        showToast(`Lỗi xóa key: ${error.message}`);
+                    }
+                }
+            }
+            if (e.target.closest('.check-btn')) {
+                checkKeyStatus(card, card.dataset.value, card.dataset.type);
+            }
+        });
+
+        keyListDiv.addEventListener('focusout', async (e) => {
+            const notesTextarea = e.target.closest('.card-notes');
+            if (notesTextarea) {
+                const keyId = notesTextarea.dataset.keyId;
+                try {
+                    await apiFetch(`/api/keys/${keyId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ notes: notesTextarea.value })
+                    });
+                    showToast('Đã lưu ghi chú.');
+                } catch (error) {
+                    showToast(`Lỗi lưu ghi chú: ${error.message}`);
+                }
+            }
+        });
+
+        async function checkKeyStatus(card, key, type) {
+            const checkBtn = card.querySelector('.check-btn');
+            const btnText = checkBtn.querySelector('.btn-text');
+            const loader = checkBtn.querySelector('.loader');
+            
+            setLoading(true);
+            updateCardStatus(card, 'checking', 'Đang kiểm tra...');
+
+            let result = { status: 'unknown', message: 'Không có phương thức kiểm tra.' };
+            try {
+                switch (type) {
+                    case 'google-ai': const googleRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`); if (googleRes.ok) result = { status: 'active', message: 'Key hợp lệ.' }; else { const error = await googleRes.json(); result = { status: 'invalid', message: error.error?.message || 'Key không hợp lệ.' }; } break;
+                    case 'hugging-face': const hfRes = await fetch('https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0', { method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ inputs: 'test' }) }); if (hfRes.ok) result = { status: 'active', message: 'Key hợp lệ và còn tín dụng.' }; else { const error = await hfRes.json(); if (hfRes.status === 401) result = { status: 'invalid', message: 'Key không hợp lệ hoặc sai.' }; else if (error.error && error.error.includes('credits')) result = { status: 'limited', message: 'Hết tín dụng miễn phí.' }; else result = { status: 'invalid', message: error.error || `Lỗi không xác định (Mã: ${hfRes.status})` }; } break;
+                    case 'stability-ai': case 'openai': const userRes = await fetch(type === 'stability-ai' ? 'https://api.stability.ai/v1/user/account' : 'https://api.openai.com/v1/models', { headers: { 'Authorization': `Bearer ${key}` } }); if (userRes.ok) { if (type === 'stability-ai') { const data = await userRes.json(); const credits = (data.credits ?? 0).toLocaleString('vi-VN'); result = { status: 'active', message: `Còn ${credits} credits.` }; } else { result = { status: 'active', message: 'Key OpenAI hợp lệ.' }; } } else { if (userRes.status === 401) result = { status: 'invalid', message: 'Key không hợp lệ hoặc đã hết hạn.' }; else result = { status: 'invalid', message: `Lỗi máy chủ (Mã: ${userRes.status})` }; } break;
+                }
+            } catch (error) { result = { status: 'invalid', message: 'Lỗi mạng hoặc không thể kết nối.' }; console.error(`Error checking ${type} key:`, error); }
+            
+            setLoading(false);
+            updateCardStatus(card, result.status, result.message);
+
+            function setLoading(isLoading) {
+                if (isLoading) {
+                    checkBtn.disabled = true;
+                    btnText.classList.add('hidden');
+                    loader.classList.remove('hidden');
+                } else {
+                    checkBtn.disabled = false;
+                    btnText.classList.remove('hidden');
+                    loader.classList.add('hidden');
+                }
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        }
+    </script>
+</body>
+</html>
