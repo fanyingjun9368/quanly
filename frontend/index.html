@@ -355,9 +355,15 @@
         keyListDiv.addEventListener('click', async (e) => {
             const card = e.target.closest('.key-card');
             if (!card) return;
+
             const keyId = card.dataset.id;
             
-            if (e.target.closest('.favorite-btn')) {
+            const favoriteBtn = e.target.closest('.favorite-btn');
+            const copyBtn = e.target.closest('.copy-btn');
+            const deleteBtn = e.target.closest('.delete-btn');
+            const checkBtn = e.target.closest('.check-btn');
+
+            if (favoriteBtn) {
                 const isCurrentlyFavorite = card.dataset.favorite === 'true';
                 try {
                     await apiFetch(`/api/keys/${keyId}`, {
@@ -368,16 +374,10 @@
                 } catch (error) {
                     showToast(`Lỗi cập nhật yêu thích: ${error.message}`);
                 }
-                return;
-            }
-
-            if (e.target.closest('.copy-btn')) {
+            } else if (copyBtn) {
                 const apiKeyToCopy = card.dataset.value;
                 copyToClipboard(apiKeyToCopy);
-                return;
-            }
-
-            if (e.target.closest('.delete-btn')) {
+            } else if (deleteBtn) {
                 if (confirm('Bạn có chắc chắn muốn xóa API key này?')) {
                     try {
                         await apiFetch(`/api/keys/${keyId}`, { method: 'DELETE' });
@@ -387,9 +387,7 @@
                         showToast(`Lỗi xóa key: ${error.message}`);
                     }
                 }
-                return;
-            }
-            if (e.target.closest('.check-btn')) {
+            } else if (checkBtn) {
                 checkKeyStatus(card, card.dataset.value, card.dataset.type);
             }
         });
