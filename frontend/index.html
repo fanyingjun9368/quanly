@@ -83,7 +83,13 @@
                 <h3 class="card-name text-lg font-bold text-gray-900 break-all"></h3>
                 <div class="card-logo w-8 h-8 flex-shrink-0"></div>
             </div>
-            <p class="card-masked-key font-mono text-sm text-gray-500 break-all"></p>
+            <!-- FIX: Thêm nút Sao chép (Copy) vào cấu trúc thẻ -->
+            <div class="flex items-center gap-2">
+                <p class="card-masked-key font-mono text-sm text-gray-500 break-all flex-grow"></p>
+                <button title="Sao chép key" class="copy-btn p-2 text-gray-400 hover:text-indigo-600 rounded-lg transition-colors">
+                    <i class="far fa-copy"></i>
+                </button>
+            </div>
             <div class="flex items-center gap-2 mt-4">
                 <div class="status-dot"></div>
                 <p class="card-status-text text-sm text-gray-600 flex-grow">Chưa kiểm tra</p>
@@ -153,7 +159,6 @@
         }
 
         // --- Xác thực Google & Quản lý UI ---
-        // --- FIX STARTS HERE: Hàm giải mã JWT an toàn cho ký tự UTF-8 ---
         function decodeJwtPayload(token) {
             try {
                 const base64Url = token.split('.')[1];
@@ -167,7 +172,6 @@
                 return null;
             }
         }
-        // --- FIX ENDS HERE ---
 
         window.onload = function () {
             if (GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID' || BACKEND_URL === 'YOUR_RENDER_BACKEND_URL') {
@@ -180,7 +184,7 @@
 
         function handleCredentialResponse(response) {
             idToken = response.credential;
-            const userProfile = decodeJwtPayload(idToken); // Sử dụng hàm giải mã mới
+            const userProfile = decodeJwtPayload(idToken);
             if (!userProfile) {
                 showToast("Không thể giải mã thông tin người dùng.");
                 return;
@@ -296,10 +300,57 @@
             }
         });
 
+        // --- FIX: Thêm hàm sao chép vào clipboard ---
+        function copyToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('Đã sao chép vào clipboard!');
+                }).catch(err => {
+                    console.warn('Could not copy text using navigator: ', err);
+                    fallbackCopyTextToClipboard(text);
+                });
+            } else {
+                fallbackCopyTextToClipboard(text);
+            }
+        }
+
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showToast('Đã sao chép vào clipboard!');
+                } else {
+                    showToast('Không thể sao chép!');
+                }
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+                showToast('Lỗi: Không thể sao chép!');
+            }
+            document.body.removeChild(textArea);
+        }
+        // --- FIX: Kết thúc hàm sao chép ---
+
         keyListDiv.addEventListener('click', async (e) => {
             const card = e.target.closest('.key-card');
             if (!card) return;
             const keyId = card.dataset.id;
+
+            // --- FIX: Thêm xử lý cho nút sao chép ---
+            if (e.target.closest('.copy-btn')) {
+                const apiKeyToCopy = card.dataset.value;
+                copyToClipboard(apiKeyToCopy);
+                return;
+            }
+            // --- FIX: Kết thúc xử lý nút sao chép ---
+
             if (e.target.closest('.delete-btn')) {
                 if (confirm('Bạn có chắc chắn muốn xóa API key này?')) {
                     try {
