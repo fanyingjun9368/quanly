@@ -31,6 +31,10 @@
             height: 16px;
             animation: spin 1s linear infinite;
         }
+        .favorite-btn.is-favorite i {
+            font-weight: 900; /* Makes the star solid */
+            color: #facc15; /* yellow-400 */
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -81,9 +85,13 @@
         <div class="key-card bg-white p-5 rounded-xl shadow-md flex flex-col">
             <div class="flex justify-between items-start mb-3">
                 <h3 class="card-name text-lg font-bold text-gray-900 break-all"></h3>
-                <div class="card-logo w-8 h-8 flex-shrink-0"></div>
+                <div class="flex items-center">
+                    <button title="Đánh dấu yêu thích" class="favorite-btn p-2 text-gray-400 hover:text-yellow-400 rounded-lg transition-colors">
+                        <i class="far fa-star"></i>
+                    </button>
+                    <div class="card-logo w-8 h-8 flex-shrink-0"></div>
+                </div>
             </div>
-            <!-- FIX: Thêm nút Sao chép (Copy) vào cấu trúc thẻ -->
             <div class="flex items-center gap-2">
                 <p class="card-masked-key font-mono text-sm text-gray-500 break-all flex-grow"></p>
                 <button title="Sao chép key" class="copy-btn p-2 text-gray-400 hover:text-indigo-600 rounded-lg transition-colors">
@@ -229,12 +237,15 @@
                 keyListDiv.innerHTML = `<p class="text-gray-500 col-span-full text-center">Bạn chưa có API key nào.</p>`;
                 return;
             }
-            keys.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).forEach(key => {
+            // Sắp xếp: yêu thích lên đầu, sau đó theo ngày tạo mới nhất
+            keys.sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) || new Date(b.created_at) - new Date(a.created_at))
+            .forEach(key => {
                 const card = keyCardTemplate.content.cloneNode(true).firstElementChild;
                 const provider = API_PROVIDERS[key.type] || {};
                 card.dataset.id = key.id;
                 card.dataset.value = key.value;
                 card.dataset.type = key.type;
+                card.dataset.favorite = key.favorite; // Lưu trạng thái yêu thích
                 card.querySelector('.card-name').textContent = key.name;
                 card.querySelector('.card-logo').innerHTML = provider.logo || '';
                 card.querySelector('.card-masked-key').textContent = `${key.value.substring(0, 4)}...${key.value.substring(key.value.length - 4)}`;
@@ -242,6 +253,11 @@
                 notesEl.value = key.notes || '';
                 notesEl.dataset.keyId = key.id;
                 const checkBtn = card.querySelector('.check-btn');
+                const favoriteBtn = card.querySelector('.favorite-btn');
+                
+                if (key.favorite) {
+                    favoriteBtn.classList.add('is-favorite');
+                }
                 
                 const gradientString = provider.gradient || 'from-gray-500 to-gray-600';
                 const gradientClasses = gradientString.split(' ');
@@ -287,6 +303,7 @@
                 value: apiKeyInput.value.trim(),
                 type: detectApiKeyType(apiKeyInput.value.trim()),
                 notes: '',
+                favorite: false, // Mặc định không phải là yêu thích
                 created_at: new Date().toISOString()
             };
             try {
@@ -300,7 +317,6 @@
             }
         });
 
-        // --- FIX: Thêm hàm sao chép vào clipboard ---
         function copyToClipboard(text) {
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(text).then(() => {
@@ -336,20 +352,31 @@
             }
             document.body.removeChild(textArea);
         }
-        // --- FIX: Kết thúc hàm sao chép ---
 
         keyListDiv.addEventListener('click', async (e) => {
             const card = e.target.closest('.key-card');
             if (!card) return;
             const keyId = card.dataset.id;
+            
+            if (e.target.closest('.favorite-btn')) {
+                const isCurrentlyFavorite = card.dataset.favorite === 'true';
+                try {
+                    await apiFetch(`/api/keys/${keyId}/favorite`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ favorite: !isCurrentlyFavorite })
+                    });
+                    loadKeys(); // Tải lại để sắp xếp
+                } catch (error) {
+                    showToast(`Lỗi cập nhật yêu thích: ${error.message}`);
+                }
+                return;
+            }
 
-            // --- FIX: Thêm xử lý cho nút sao chép ---
             if (e.target.closest('.copy-btn')) {
                 const apiKeyToCopy = card.dataset.value;
                 copyToClipboard(apiKeyToCopy);
                 return;
             }
-            // --- FIX: Kết thúc xử lý nút sao chép ---
 
             if (e.target.closest('.delete-btn')) {
                 if (confirm('Bạn có chắc chắn muốn xóa API key này?')) {
@@ -361,6 +388,7 @@
                         showToast(`Lỗi xóa key: ${error.message}`);
                     }
                 }
+                return;
             }
             if (e.target.closest('.check-btn')) {
                 checkKeyStatus(card, card.dataset.value, card.dataset.type);
@@ -372,7 +400,7 @@
             if (notesTextarea) {
                 const keyId = notesTextarea.dataset.keyId;
                 try {
-                    await apiFetch(`/api/keys/${keyId}`, {
+                    await apiFetch(`/api/keys/${keyId}/notes`, {
                         method: 'PUT',
                         body: JSON.stringify({ notes: notesTextarea.value })
                     });
