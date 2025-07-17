@@ -153,6 +153,22 @@
         }
 
         // --- Xác thực Google & Quản lý UI ---
+        // --- FIX STARTS HERE: Hàm giải mã JWT an toàn cho ký tự UTF-8 ---
+        function decodeJwtPayload(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                console.error("Error decoding JWT", e);
+                return null;
+            }
+        }
+        // --- FIX ENDS HERE ---
+
         window.onload = function () {
             if (GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID' || BACKEND_URL === 'YOUR_RENDER_BACKEND_URL') {
                 document.getElementById('login-view').innerHTML = `<h2 class="text-2xl text-red-500 font-bold">Lỗi Cấu Hình Frontend</h2><p class="text-gray-600 mt-2">Vui lòng điền GOOGLE_CLIENT_ID và BACKEND_URL trong tệp HTML.</p>`;
@@ -164,7 +180,12 @@
 
         function handleCredentialResponse(response) {
             idToken = response.credential;
-            const userProfile = JSON.parse(atob(idToken.split('.')[1]));
+            const userProfile = decodeJwtPayload(idToken); // Sử dụng hàm giải mã mới
+            if (!userProfile) {
+                showToast("Không thể giải mã thông tin người dùng.");
+                return;
+            }
+            
             document.getElementById('user-name').textContent = userProfile.name;
             document.getElementById('user-avatar').src = userProfile.picture;
             document.getElementById('login-view').classList.add('hidden');
