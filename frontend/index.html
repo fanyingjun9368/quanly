@@ -23,6 +23,14 @@
         .toast.show { visibility: visible; opacity: 1; transition: opacity 0.5s linear; }
         .btn-gradient { background-size: 200% auto; transition: background-position 0.5s ease; }
         .btn-gradient:hover { background-position: right center; }
+        .loader {
+            border: 2px solid white;
+            border-top-color: transparent;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -85,7 +93,7 @@
                 <textarea class="card-notes w-full bg-gray-50 p-2 rounded-md text-sm text-gray-800 resize-none border border-gray-200 focus:ring-1 focus:ring-indigo-500" rows="2" placeholder="Thêm ghi chú..."></textarea>
             </div>
             <div class="flex items-center justify-end space-x-2 mt-4">
-                <button class="check-btn btn-gradient text-white text-xs font-bold py-2 px-3 rounded-lg transition duration-300 flex items-center gap-1"><i class="fas fa-sync-alt"></i><span class="btn-text">Kiểm tra</span><div class="loader hidden" style="width: 16px; height: 16px; border-width: 2px; border-color: white; border-top-color: transparent;"></div></button>
+                <button class="check-btn btn-gradient text-white text-xs font-bold py-2 px-3 rounded-lg transition duration-300 flex items-center gap-1"><i class="fas fa-sync-alt"></i><span class="btn-text">Kiểm tra</span><div class="loader hidden"></div></button>
                 <button class="delete-btn bg-gray-200 hover:bg-red-200 text-gray-700 hover:text-red-800 text-xs font-bold py-2 px-3 rounded-lg transition"><i class="fas fa-trash"></i></button>
             </div>
         </div>
@@ -209,7 +217,11 @@
                 notesEl.value = key.notes || '';
                 notesEl.dataset.keyId = key.id;
                 const checkBtn = card.querySelector('.check-btn');
-                checkBtn.classList.add(`bg-gradient-to-r`, provider.gradient || 'from-gray-500 to-gray-600');
+                
+                const gradientString = provider.gradient || 'from-gray-500 to-gray-600';
+                const gradientClasses = gradientString.split(' ');
+                checkBtn.classList.add('bg-gradient-to-r', ...gradientClasses);
+
                 updateCardStatus(card, 'unknown', 'Chưa kiểm tra');
                 keyListDiv.appendChild(card);
             });
@@ -299,12 +311,24 @@
             }
         });
 
-        async function checkKeyStatus(card, key, type) {
-            const checkBtn = card.querySelector('.check-btn');
+        function setLoading(checkBtn, isLoading) {
             const btnText = checkBtn.querySelector('.btn-text');
             const loader = checkBtn.querySelector('.loader');
+            if (isLoading) {
+                checkBtn.disabled = true;
+                btnText.classList.add('hidden');
+                loader.classList.remove('hidden');
+            } else {
+                checkBtn.disabled = false;
+                btnText.classList.remove('hidden');
+                loader.classList.add('hidden');
+            }
+        }
+
+        async function checkKeyStatus(card, key, type) {
+            const checkBtn = card.querySelector('.check-btn');
             
-            setLoading(true);
+            setLoading(checkBtn, true);
             updateCardStatus(card, 'checking', 'Đang kiểm tra...');
 
             let result = { status: 'unknown', message: 'Không có phương thức kiểm tra.' };
@@ -316,20 +340,8 @@
                 }
             } catch (error) { result = { status: 'invalid', message: 'Lỗi mạng hoặc không thể kết nối.' }; console.error(`Error checking ${type} key:`, error); }
             
-            setLoading(false);
+            setLoading(checkBtn, false);
             updateCardStatus(card, result.status, result.message);
-
-            function setLoading(isLoading) {
-                if (isLoading) {
-                    checkBtn.disabled = true;
-                    btnText.classList.add('hidden');
-                    loader.classList.remove('hidden');
-                } else {
-                    checkBtn.disabled = false;
-                    btnText.classList.remove('hidden');
-                    loader.classList.add('hidden');
-                }
-            }
         }
 
         function showToast(message) {
