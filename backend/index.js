@@ -77,13 +77,23 @@ app.get('/api/keys', authMiddleware, async (req, res) => {
 
 app.post('/api/keys', authMiddleware, async (req, res) => {
     try {
-        const newKey = { ...req.body, user_id: req.userId };
-        const result = await keysCollection.insertOne(newKey);
+        // Lấy dữ liệu từ body và thêm user_id vào
+        const newKeyData = {
+            id: req.body.id,
+            user_id: req.userId,
+            name: req.body.name,
+            value: req.body.value,
+            type: req.body.type,
+            notes: req.body.notes,
+            created_at: req.body.created_at
+        };
+        const result = await keysCollection.insertOne(newKeyData);
         res.status(201).json(result);
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
 });
+
 
 app.put('/api/keys/:id', authMiddleware, async (req, res) => {
     const { notes } = req.body;
@@ -120,20 +130,3 @@ app.delete('/api/keys/:id', authMiddleware, async (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
-```json
-// backend/package.json
-{
-  "name": "apikey-manager-backend",
-  "version": "2.0.0",
-  "description": "Backend for the API Key Manager App using MongoDB",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.19.2",
-    "google-auth-library": "^9.11.0",
-    "mongodb": "^6.7.0"
-  }
-}
