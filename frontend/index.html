@@ -237,7 +237,6 @@
                 keyListDiv.innerHTML = `<p class="text-gray-500 col-span-full text-center">Bạn chưa có API key nào.</p>`;
                 return;
             }
-            // Sắp xếp: yêu thích lên đầu, sau đó theo ngày tạo mới nhất
             keys.sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) || new Date(b.created_at) - new Date(a.created_at))
             .forEach(key => {
                 const card = keyCardTemplate.content.cloneNode(true).firstElementChild;
@@ -245,7 +244,7 @@
                 card.dataset.id = key.id;
                 card.dataset.value = key.value;
                 card.dataset.type = key.type;
-                card.dataset.favorite = key.favorite; // Lưu trạng thái yêu thích
+                card.dataset.favorite = key.favorite;
                 card.querySelector('.card-name').textContent = key.name;
                 card.querySelector('.card-logo').innerHTML = provider.logo || '';
                 card.querySelector('.card-masked-key').textContent = `${key.value.substring(0, 4)}...${key.value.substring(key.value.length - 4)}`;
@@ -303,7 +302,7 @@
                 value: apiKeyInput.value.trim(),
                 type: detectApiKeyType(apiKeyInput.value.trim()),
                 notes: '',
-                favorite: false, // Mặc định không phải là yêu thích
+                favorite: false,
                 created_at: new Date().toISOString()
             };
             try {
@@ -361,11 +360,11 @@
             if (e.target.closest('.favorite-btn')) {
                 const isCurrentlyFavorite = card.dataset.favorite === 'true';
                 try {
-                    await apiFetch(`/api/keys/${keyId}/favorite`, {
+                    await apiFetch(`/api/keys/${keyId}`, {
                         method: 'PUT',
                         body: JSON.stringify({ favorite: !isCurrentlyFavorite })
                     });
-                    loadKeys(); // Tải lại để sắp xếp
+                    loadKeys();
                 } catch (error) {
                     showToast(`Lỗi cập nhật yêu thích: ${error.message}`);
                 }
@@ -400,7 +399,7 @@
             if (notesTextarea) {
                 const keyId = notesTextarea.dataset.keyId;
                 try {
-                    await apiFetch(`/api/keys/${keyId}/notes`, {
+                    await apiFetch(`/api/keys/${keyId}`, {
                         method: 'PUT',
                         body: JSON.stringify({ notes: notesTextarea.value })
                     });
