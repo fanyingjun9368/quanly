@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3001;
 
 // --- Cấu hình ---
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const DATABASE_URL = process.env.DATABASE_URL; // Lấy từ MongoDB Atlas
+const DATABASE_URL = process.env.DATABASE_URL;
 
 if (!GOOGLE_CLIENT_ID || !DATABASE_URL) {
     console.error("FATAL ERROR: GOOGLE_CLIENT_ID or DATABASE_URL environment variable is not set.");
@@ -32,8 +32,8 @@ let keysCollection;
 // Kết nối đến MongoDB
 mongoClient.connect().then(() => {
     console.log("Successfully connected to MongoDB Atlas!");
-    db = mongoClient.db("api_key_manager"); // Tên cơ sở dữ liệu
-    keysCollection = db.collection("keys"); // Tên collection
+    db = mongoClient.db("api_key_manager");
+    keysCollection = db.collection("keys");
 }).catch(err => {
     console.error("Failed to connect to MongoDB Atlas", err);
     process.exit(1);
@@ -77,28 +77,19 @@ app.get('/api/keys', authMiddleware, async (req, res) => {
 
 app.post('/api/keys', authMiddleware, async (req, res) => {
     try {
-        // Lấy dữ liệu từ body và thêm user_id vào
-        const newKeyData = {
-            id: req.body.id,
-            user_id: req.userId,
-            name: req.body.name,
-            value: req.body.value,
-            type: req.body.type,
-            notes: req.body.notes,
-            created_at: req.body.created_at
-        };
-        const result = await keysCollection.insertOne(newKeyData);
+        const newKey = { ...req.body, user_id: req.userId, favorite: false }; // Thêm favorite: false
+        const result = await keysCollection.insertOne(newKey);
         res.status(201).json(result);
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
 });
 
-
-app.put('/api/keys/:id', authMiddleware, async (req, res) => {
+// Endpoint để cập nhật ghi chú
+app.put('/api/keys/:id/notes', authMiddleware, async (req, res) => {
     const { notes } = req.body;
     if (notes === undefined) {
-        return res.status(400).json({ error: "Only 'notes' field can be updated." });
+        return res.status(400).json({ error: "notes field is required." });
     }
     try {
         const result = await keysCollection.updateOne(
@@ -108,11 +99,32 @@ app.put('/api/keys/:id', authMiddleware, async (req, res) => {
         if (result.matchedCount === 0) {
             return res.status(404).json({ error: "Key not found or user not authorized" });
         }
-        res.json({ message: 'Updated successfully' });
+        res.json({ message: 'Notes updated successfully' });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
 });
+
+// Endpoint để cập nhật trạng thái yêu thích
+app.put('/api/keys/:id/favorite', authMiddleware, async (req, res) => {
+    const { favorite } = req.body;
+    if (typeof favorite !== 'boolean') {
+        return res.status(400).json({ error: "favorite field must be a boolean." });
+    }
+    try {
+        const result = await keysCollection.updateOne(
+            { id: req.params.id, user_id: req.userId },
+            { $set: { favorite: favorite } }
+        );
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: "Key not found or user not authorized" });
+        }
+        res.json({ message: 'Favorite status updated successfully' });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
 
 app.delete('/api/keys/:id', authMiddleware, async (req, res) => {
     try {
