@@ -64,6 +64,27 @@ async function authMiddleware(req, res, next) {
     }
 }
 
+// =========================================================
+// ✅ BẠN CHÈN ĐOẠN MÃ HEALTH CHECK VÀO ĐÂY
+// --- HEALTH CHECK ENDPOINT ---
+app.get('/api/health', (req, res) => {
+  // Kiểm tra trạng thái kết nối của mongoClient
+  const isMongoConnected = mongoClient?.topology?.isConnected();
+
+  if (isMongoConnected) {
+    res.status(200).json({
+      status: 'OK',
+      message: 'Server is running and database connection is healthy.'
+    });
+  } else {
+    res.status(503).json({
+      status: 'SERVICE_UNAVAILABLE',
+      message: 'Server is running, but database connection is lost.'
+    });
+  }
+});
+// =========================================================
+
 // --- API Endpoints ---
 
 app.get('/api/keys', authMiddleware, async (req, res) => {
