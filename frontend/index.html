@@ -79,12 +79,20 @@
                 </button>
             </div>
             <div>
-                <h2 class="text-2xl font-semibold mb-6 text-center text-gray-900">Danh sách API Keys</h2>
+                 <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
+                    <h2 class="text-2xl font-semibold text-gray-900 mb-4 sm:mb-0">Danh sách API Keys</h2>
+                    <button id="check-all-btn" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2 disabled:bg-gray-400">
+                        <i class="fas fa-tasks"></i>
+                        <span id="check-all-btn-text">Kiểm tra tất cả</span>
+                        <div id="check-all-loader" class="loader hidden"></div>
+                    </button>
+                </div>
                 <div id="key-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
             </div>
         </main>
     </div>
 
+    <!-- Template cho thẻ API key -->
     <template id="key-card-template">
         <div class="key-card bg-white p-5 rounded-xl shadow-md flex flex-col">
             <div class="flex justify-between items-start mb-3">
@@ -117,10 +125,11 @@
         </div>
     </template>
 
+    <!-- Toast thông báo nhanh -->
     <div id="toast" class="toast fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-800 text-white py-2 px-5 rounded-lg shadow-lg"></div>
 
     <!-- Modal Xác nhận Xóa -->
-    <div id="delete-confirm-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
+    <div id="delete-confirm-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
             <h3 class="text-lg font-bold text-gray-900 mb-4">Xác nhận xóa</h3>
             <p class="text-gray-600 mb-6">Bạn có chắc chắn muốn xóa API key này không? Hành động này không thể hoàn tác.</p>
@@ -131,13 +140,37 @@
         </div>
     </div>
     
+    <!-- Modal Chi tiết Trạng thái API -->
+    <div id="status-details-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div id="modal-header" class="flex justify-between items-center p-4 border-b rounded-t-lg">
+                <h3 id="modal-title" class="text-xl font-bold">Chi tiết Trạng thái API</h3>
+                <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <div class="p-5">
+                <div class="mb-4">
+                    <p class="font-semibold text-gray-800">Trạng thái:</p>
+                    <p id="modal-status" class="text-gray-700 p-2 rounded-md font-medium"></p>
+                </div>
+                <div class="mb-4">
+                    <p class="font-semibold text-gray-800">Thông điệp từ API:</p>
+                    <p id="modal-message" class="text-sm text-gray-700 bg-gray-100 p-3 rounded-md font-mono"></p>
+                </div>
+                <div>
+                    <p class="font-semibold text-gray-800">💡 Khuyến nghị:</p>
+                    <p id="modal-advice" class="text-gray-600"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
         // --- Cấu hình ---
         const GOOGLE_CLIENT_ID = '833528835955-t7pai7q2tb836dqggme3h3560n58s6au.apps.googleusercontent.com';
         const BACKEND_URL = 'https://quanly-backen.onrender.com';
         let idToken = null;
-        let keyIdToDelete = null; // Biến để lưu ID của key sẽ bị xóa
+        let keyIdToDelete = null;
 
         const API_PROVIDERS = {
             'google-ai': { name: 'Google AI', regex: /^AIzaSy[A-Za-z0-9_-]{33}$/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full text-blue-500"><path d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.18,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.18,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.18,22C17.6,22 21.54,18.33 21.54,12.81C21.54,11.76 21.45,11.44 21.35,11.1Z"/></svg>`, gradient: 'from-blue-500 to-green-500' },
@@ -150,7 +183,6 @@
         async function apiFetch(endpoint, options = {}) {
             if (!idToken) throw new Error("User not authenticated");
             const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}`, ...options.headers };
-            
             let response;
             try {
                 response = await fetch(`${BACKEND_URL}${endpoint}`, { ...options, headers });
@@ -158,7 +190,6 @@
                 console.error("Network error:", networkError);
                 throw new Error("Lỗi mạng. Không thể kết nối đến máy chủ.");
             }
-
             if (!response.ok) {
                 let errorMsg = `Lỗi HTTP! Mã: ${response.status}`;
                 try {
@@ -169,15 +200,13 @@
                 }
                 throw new Error(errorMsg);
             }
-
             if (response.status === 204) return null;
-
             try {
                 return await response.json();
             } catch (e) {
                 if (e instanceof SyntaxError) {
-                    console.error("Failed to parse JSON response. The backend might have returned an HTML page.", e);
-                    throw new Error("Lỗi giao tiếp: Backend trả về dữ liệu không hợp lệ (HTML). Vui lòng kiểm tra lại cấu hình BACKEND_URL.");
+                    console.error("Failed to parse JSON response. Backend might be misconfigured.", e);
+                    throw new Error("Lỗi giao tiếp: Backend trả về dữ liệu không hợp lệ. Vui lòng kiểm tra lại cấu hình BACKEND_URL.");
                 }
                 throw e;
             }
@@ -188,9 +217,7 @@
             try {
                 const base64Url = token.split('.')[1];
                 const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                }).join(''));
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
                 return JSON.parse(jsonPayload);
             } catch (e) {
                 console.error("Error decoding JWT", e);
@@ -214,7 +241,6 @@
                 showToast("Không thể giải mã thông tin người dùng.");
                 return;
             }
-            
             document.getElementById('user-name').textContent = userProfile.name;
             document.getElementById('user-avatar').src = userProfile.picture;
             document.getElementById('login-view').classList.add('hidden');
@@ -238,12 +264,14 @@
         const keyListDiv = document.getElementById('key-list');
         const detectedApiLogo = document.getElementById('detected-api-logo');
         const keyCardTemplate = document.getElementById('key-card-template');
+        const checkAllBtn = document.getElementById('check-all-btn');
         
-        // Modal elements
         const deleteConfirmModal = document.getElementById('delete-confirm-modal');
         const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
         const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
 
+        const statusDetailsModal = document.getElementById('status-details-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
 
         async function loadKeys() {
             try {
@@ -267,7 +295,7 @@
                 card.dataset.id = key.id;
                 card.dataset.value = key.value;
                 card.dataset.type = key.type;
-                card.dataset.favorite = key.favorite;
+                card.dataset.favorite = String(key.favorite);
                 card.querySelector('.card-name').textContent = key.name;
                 card.querySelector('.card-logo').innerHTML = provider.logo || '';
                 card.querySelector('.card-masked-key').textContent = `${key.value.substring(0, 4)}...${key.value.substring(key.value.length - 4)}`;
@@ -282,8 +310,7 @@
                 }
                 
                 const gradientString = provider.gradient || 'from-gray-500 to-gray-600';
-                const gradientClasses = gradientString.split(' ');
-                checkBtn.classList.add('bg-gradient-to-r', ...gradientClasses);
+                checkBtn.classList.add('bg-gradient-to-r', ...gradientString.split(' '));
 
                 updateCardStatus(card, 'unknown', 'Chưa kiểm tra');
                 keyListDiv.appendChild(card);
@@ -340,112 +367,102 @@
         });
 
         function copyToClipboard(text) {
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(text).then(() => {
-                    showToast('Đã sao chép vào clipboard!');
-                }).catch(err => {
-                    console.warn('Could not copy text using navigator: ', err);
-                    fallbackCopyTextToClipboard(text);
-                });
-            } else {
-                fallbackCopyTextToClipboard(text);
-            }
-        }
-
-        function fallbackCopyTextToClipboard(text) {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.top = "0";
-            textArea.style.left = "0";
-            textArea.style.position = "fixed";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-                const successful = document.execCommand('copy');
-                if (successful) {
-                    showToast('Đã sao chép vào clipboard!');
-                } else {
-                    showToast('Không thể sao chép!');
-                }
-            } catch (err) {
-                console.error('Fallback: Oops, unable to copy', err);
-                showToast('Lỗi: Không thể sao chép!');
-            }
-            document.body.removeChild(textArea);
+            navigator.clipboard.writeText(text).then(() => showToast('Đã sao chép vào clipboard!'))
+            .catch(() => showToast('Lỗi: Không thể sao chép!'));
         }
         
-        // --- Cập nhật Event Listener để sử dụng Modal ---
         keyListDiv.addEventListener('click', async (e) => {
             const card = e.target.closest('.key-card');
             if (!card) return;
 
             const keyId = card.dataset.id;
             
-            const favoriteBtn = e.target.closest('.favorite-btn');
-            const copyBtn = e.target.closest('.copy-btn');
-            const deleteBtn = e.target.closest('.delete-btn');
-            const checkBtn = e.target.closest('.check-btn');
-
-            if (favoriteBtn) {
+            if (e.target.closest('.favorite-btn')) {
                 const isCurrentlyFavorite = card.dataset.favorite === 'true';
                 try {
-                    await apiFetch(`/api/keys/${keyId}`, {
-                        method: 'PUT',
-                        body: JSON.stringify({ favorite: !isCurrentlyFavorite })
-                    });
+                    await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify({ favorite: !isCurrentlyFavorite }) });
                     loadKeys();
                 } catch (error) {
                     showToast(`Lỗi cập nhật yêu thích: ${error.message}`);
                 }
-            } else if (copyBtn) {
-                const apiKeyToCopy = card.dataset.value;
-                copyToClipboard(apiKeyToCopy);
-            } else if (deleteBtn) {
-                // Thay vì gọi confirm(), gọi hàm để hiển thị modal
+            } else if (e.target.closest('.copy-btn')) {
+                copyToClipboard(card.dataset.value);
+            } else if (e.target.closest('.delete-btn')) {
                 showDeleteConfirmModal(keyId);
-            } else if (checkBtn) {
-                checkKeyStatus(card, card.dataset.value, card.dataset.type);
+            } else if (e.target.closest('.check-btn')) {
+                const result = await checkKeyStatus(card, card.dataset.value, card.dataset.type);
+                showStatusModal(result);
             }
         });
 
-        // --- Logic cho Modal Xóa ---
+        // --- Logic cho Modal ---
         function showDeleteConfirmModal(keyId) {
-            keyIdToDelete = keyId; // Lưu ID để sử dụng khi người dùng xác nhận
+            keyIdToDelete = keyId;
             deleteConfirmModal.classList.remove('hidden');
         }
 
         function hideDeleteConfirmModal() {
-            keyIdToDelete = null; // Reset ID
+            keyIdToDelete = null;
             deleteConfirmModal.classList.add('hidden');
         }
 
         cancelDeleteBtn.addEventListener('click', hideDeleteConfirmModal);
-
         confirmDeleteBtn.addEventListener('click', async () => {
             if (!keyIdToDelete) return;
-            
             try {
                 await apiFetch(`/api/keys/${keyIdToDelete}`, { method: 'DELETE' });
                 showToast('Đã xóa key.');
-                loadKeys(); // Tải lại danh sách key sau khi xóa
+                loadKeys();
             } catch (error) {
                 showToast(`Lỗi xóa key: ${error.message}`);
             } finally {
-                hideDeleteConfirmModal(); // Ẩn modal sau khi hoàn tất
+                hideDeleteConfirmModal();
             }
         });
 
+        function showStatusModal(result) {
+            const { status, title, message, advice } = result;
+            const modalTitle = statusDetailsModal.querySelector('#modal-title');
+            const modalStatus = statusDetailsModal.querySelector('#modal-status');
+            const modalMessage = statusDetailsModal.querySelector('#modal-message');
+            const modalAdvice = statusDetailsModal.querySelector('#modal-advice');
+            const modalHeader = statusDetailsModal.querySelector('#modal-header');
+
+            modalHeader.classList.remove('bg-green-100', 'bg-yellow-100', 'bg-red-100', 'bg-gray-100');
+            modalTitle.classList.remove('text-green-800', 'text-yellow-800', 'text-red-800', 'text-gray-800');
+            
+            modalTitle.textContent = title;
+            modalStatus.textContent = title;
+            modalMessage.textContent = message;
+            modalAdvice.textContent = advice;
+
+            switch(status) {
+                case 'active':
+                    modalHeader.classList.add('bg-green-100');
+                    modalTitle.classList.add('text-green-800');
+                    break;
+                case 'limited':
+                    modalHeader.classList.add('bg-yellow-100');
+                    modalTitle.classList.add('text-yellow-800');
+                    break;
+                case 'invalid':
+                    modalHeader.classList.add('bg-red-100');
+                    modalTitle.classList.add('text-red-800');
+                    break;
+                default:
+                    modalHeader.classList.add('bg-gray-100');
+                    modalTitle.classList.add('text-gray-800');
+            }
+            statusDetailsModal.classList.remove('hidden');
+        }
+
+        closeModalBtn.addEventListener('click', () => statusDetailsModal.classList.add('hidden'));
 
         keyListDiv.addEventListener('focusout', async (e) => {
-            const notesTextarea = e.target.closest('.card-notes');
-            if (notesTextarea) {
-                const keyId = notesTextarea.dataset.keyId;
+            if (e.target.closest('.card-notes')) {
+                const notesTextarea = e.target.closest('.card-notes');
                 try {
-                    await apiFetch(`/api/keys/${keyId}`, {
-                        method: 'PUT',
-                        body: JSON.stringify({ notes: notesTextarea.value })
-                    });
+                    await apiFetch(`/api/keys/${notesTextarea.dataset.keyId}`, { method: 'PUT', body: JSON.stringify({ notes: notesTextarea.value }) });
                     showToast('Đã lưu ghi chú.');
                 } catch (error) {
                     showToast(`Lỗi lưu ghi chú: ${error.message}`);
@@ -453,38 +470,123 @@
             }
         });
 
-        function setLoading(checkBtn, isLoading) {
-            const btnText = checkBtn.querySelector('.btn-text');
-            const loader = checkBtn.querySelector('.loader');
+        function setButtonLoading(btn, isLoading) {
+            const btnText = btn.querySelector('.btn-text');
+            const loader = btn.querySelector('.loader');
+            btn.disabled = isLoading;
             if (isLoading) {
-                checkBtn.disabled = true;
-                btnText.classList.add('hidden');
-                loader.classList.remove('hidden');
+                if(btnText) btnText.classList.add('hidden');
+                if(loader) loader.classList.remove('hidden');
             } else {
-                checkBtn.disabled = false;
-                btnText.classList.remove('hidden');
-                loader.classList.add('hidden');
+                if(btnText) btnText.classList.remove('hidden');
+                if(loader) loader.classList.add('hidden');
+            }
+        }
+        
+        // --- LOGIC KIỂM TRA API (ĐÃ NÂNG CẤP) ---
+        async function checkKeyStatus(card, key, type) {
+            const checkBtn = card.querySelector('.check-btn');
+            setButtonLoading(checkBtn, true);
+            updateCardStatus(card, 'checking', 'Đang kiểm tra...');
+
+            let result;
+            try {
+                switch (type) {
+                    case 'google-ai': result = await checkGoogleKey(key); break;
+                    case 'hugging-face': result = await checkHuggingFaceKey(key); break;
+                    case 'stability-ai': result = await checkStabilityKey(key); break;
+                    case 'openai': result = await checkOpenAIKey(key); break;
+                    default: result = { status: 'unknown', title: 'Không xác định', message: 'Loại API này không hỗ trợ kiểm tra tự động.', advice: 'Vui lòng kiểm tra thủ công tại trang chủ của nhà cung cấp.' };
+                }
+            } catch (error) {
+                result = { status: 'invalid', title: 'Lỗi Kết Nối', message: error.message, advice: 'Kiểm tra kết nối mạng của bạn và thử lại. Có thể do CORS hoặc lỗi từ máy chủ API.' };
+                console.error(`Error checking ${type} key:`, error);
+            }
+            
+            setButtonLoading(checkBtn, false);
+            updateCardStatus(card, result.status, result.title);
+            return result;
+        }
+
+        async function checkGoogleKey(key) {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+            if (response.ok) {
+                return { status: 'active', title: 'Hoạt động tốt', message: 'Key Google AI (Gemini) hợp lệ và đang hoạt động.', advice: 'Bạn có thể sử dụng key này. Hãy theo dõi hạn mức sử dụng trên Google AI Studio.' };
+            }
+            const errorData = await response.json();
+            const errorMessage = errorData.error?.message || 'Không có thông tin lỗi.';
+            switch(response.status) {
+                case 400: return { status: 'invalid', title: 'Key không hợp lệ', message: errorMessage, advice: 'Kiểm tra lại key đã sao chép đúng chưa. Key có thể đã bị xóa hoặc sai định dạng.' };
+                case 429: return { status: 'limited', title: 'Vượt giới hạn truy vấn', message: errorMessage, advice: 'Bạn đã gửi quá nhiều yêu cầu. Vui lòng chờ một lát (thường là 1 phút) rồi thử lại.' };
+                default: return { status: 'invalid', title: `Lỗi ${response.status}`, message: errorMessage, advice: 'Đã xảy ra lỗi không xác định. Vui lòng kiểm tra trang trạng thái của Google Cloud.' };
             }
         }
 
-        async function checkKeyStatus(card, key, type) {
-            const checkBtn = card.querySelector('.check-btn');
-            
-            setLoading(checkBtn, true);
-            updateCardStatus(card, 'checking', 'Đang kiểm tra...');
-
-            let result = { status: 'unknown', message: 'Không có phương thức kiểm tra.' };
-            try {
-                switch (type) {
-                    case 'google-ai': const googleRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`); if (googleRes.ok) result = { status: 'active', message: 'Key hợp lệ.' }; else { const error = await googleRes.json(); result = { status: 'invalid', message: error.error?.message || 'Key không hợp lệ.' }; } break;
-                    case 'hugging-face': const hfRes = await fetch('https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0', { method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ inputs: 'test' }) }); if (hfRes.ok) result = { status: 'active', message: 'Key hợp lệ và còn tín dụng.' }; else { const error = await hfRes.json(); if (hfRes.status === 401) result = { status: 'invalid', message: 'Key không hợp lệ hoặc sai.' }; else if (error.error && error.error.includes('credits')) result = { status: 'limited', message: 'Hết tín dụng miễn phí.' }; else result = { status: 'invalid', message: error.error || `Lỗi không xác định (Mã: ${hfRes.status})` }; } break;
-                    case 'stability-ai': case 'openai': const userRes = await fetch(type === 'stability-ai' ? 'https://api.stability.ai/v1/user/account' : 'https://api.openai.com/v1/models', { headers: { 'Authorization': `Bearer ${key}` } }); if (userRes.ok) { if (type === 'stability-ai') { const data = await userRes.json(); const credits = (data.credits ?? 0).toLocaleString('vi-VN'); result = { status: 'active', message: `Còn ${credits} credits.` }; } else { result = { status: 'active', message: 'Key OpenAI hợp lệ.' }; } } else { if (userRes.status === 401) result = { status: 'invalid', message: 'Key không hợp lệ hoặc đã hết hạn.' }; else result = { status: 'invalid', message: `Lỗi máy chủ (Mã: ${userRes.status})` }; } break;
-                }
-            } catch (error) { result = { status: 'invalid', message: 'Lỗi mạng hoặc không thể kết nối.' }; console.error(`Error checking ${type} key:`, error); }
-            
-            setLoading(checkBtn, false);
-            updateCardStatus(card, result.status, result.message);
+        async function checkStabilityKey(key) {
+            const response = await fetch('https://api.stability.ai/v1/user/account', { headers: { 'Authorization': `Bearer ${key}` } });
+            if (response.ok) {
+                const data = await response.json();
+                const credits = (data.credits ?? 0).toLocaleString('vi-VN');
+                return { status: 'active', title: `Còn ${credits} credits`, message: `Key Stability AI hợp lệ. Số dư credits: ${credits}.`, advice: 'Bạn có thể sử dụng key này. Nạp thêm credits khi cần thiết.' };
+            }
+            const errorData = await response.json().catch(() => ({}));
+            const errorMessage = errorData.message || 'Không có thông tin lỗi.';
+            if (response.status === 401) {
+                return { status: 'invalid', title: 'Key không hợp lệ', message: 'API key không đúng hoặc đã bị thu hồi.', advice: 'Hãy tạo một key mới trên trang DreamStudio hoặc kiểm tra lại key của bạn.' };
+            }
+            return { status: 'invalid', title: `Lỗi ${response.status}`, message: errorMessage, advice: 'Đã có lỗi xảy ra từ phía Stability AI. Vui lòng thử lại sau.' };
         }
+
+        async function checkHuggingFaceKey(key) {
+            // Sử dụng một model nhẹ để kiểm tra, tránh tốn nhiều tài nguyên
+            const response = await fetch('https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2', { method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ inputs: 'test' }) });
+            const errorData = await response.json().catch(() => ({}));
+            const errorMessage = errorData.error || `Không có thông tin lỗi cụ thể. Status: ${response.status}`;
+
+            if (response.ok) {
+                 return { status: 'active', title: 'Hoạt động tốt', message: 'Key Hugging Face hợp lệ.', advice: 'Key có thể được sử dụng cho các API inference. Một số model có thể yêu cầu trả phí.' };
+            }
+
+            switch(response.status) {
+                case 401: return { status: 'invalid', title: 'Key không hợp lệ', message: errorMessage, advice: 'Kiểm tra lại key của bạn. Đảm bảo bạn đã sao chép đúng từ trang cài đặt của Hugging Face.' };
+                case 403: return { status: 'limited', title: 'Yêu cầu trả phí', message: errorMessage, advice: 'Model này có thể yêu cầu trả phí hoặc bạn cần kích hoạt gói Pro. Hãy kiểm tra cài đặt thanh toán trên Hugging Face.' };
+                default: return { status: 'invalid', title: `Lỗi ${response.status}`, message: errorMessage, advice: 'Đã có lỗi xảy ra. Có thể model đang được tải hoặc có sự cố từ Hugging Face.' };
+            }
+        }
+        
+        async function checkOpenAIKey(key) {
+            const response = await fetch('https://api.openai.com/v1/models', { headers: { 'Authorization': `Bearer ${key}` } });
+            if (response.ok) {
+                return { status: 'active', title: 'Hoạt động tốt', message: 'Key OpenAI hợp lệ và có quyền truy cập models.', advice: 'Bạn có thể sử dụng key này. Theo dõi hạn mức và thanh toán trên trang quản trị của OpenAI.' };
+            }
+            const errorData = await response.json();
+            const errorMessage = errorData.error?.message || 'Không có thông tin lỗi.';
+            if (response.status === 401) {
+                return { status: 'invalid', title: 'Key không hợp lệ hoặc hết hạn', message: errorMessage, advice: 'Kiểm tra lại key, hoặc tạo key mới. Có thể key của bạn đã bị thu hồi hoặc hết hạn tín dụng.' };
+            }
+            return { status: 'invalid', title: `Lỗi ${response.status}`, message: errorMessage, advice: 'Đã có lỗi xảy ra. Vui lòng kiểm tra trang trạng thái của OpenAI.' };
+        }
+
+        // --- Logic nút Kiểm tra tất cả ---
+        checkAllBtn.addEventListener('click', async () => {
+            const checkAllBtnText = document.getElementById('check-all-btn-text');
+            const checkAllLoader = document.getElementById('check-all-loader');
+            
+            checkAllBtn.disabled = true;
+            checkAllBtnText.classList.add('hidden');
+            checkAllLoader.classList.remove('hidden');
+
+            const allKeyCards = document.querySelectorAll('.key-card');
+            for (const card of allKeyCards) {
+                await checkKeyStatus(card, card.dataset.value, card.dataset.type);
+                await new Promise(resolve => setTimeout(resolve, 300)); // Thêm độ trễ nhỏ để tránh rate limit
+            }
+            
+            checkAllBtn.disabled = false;
+            checkAllBtnText.classList.remove('hidden');
+            checkAllLoader.classList.add('hidden');
+            showToast("Đã hoàn tất kiểm tra tất cả các key.");
+        });
 
         function showToast(message) {
             const toast = document.getElementById('toast');
