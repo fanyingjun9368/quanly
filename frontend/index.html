@@ -572,19 +572,38 @@
         }
 
         async function checkHuggingFaceKey(key) {
-            // Sử dụng một model nhẹ để kiểm tra, tránh tốn nhiều tài nguyên
-            const response = await fetch('https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2', { method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ inputs: 'test' }) });
-            const errorData = await response.json().catch(() => ({}));
-            const errorMessage = errorData.error || `Không có thông tin lỗi cụ thể. Status: ${response.status}`;
+            // [FIXED] Sử dụng endpoint 'whoami' đáng tin cậy hơn để xác thực token.
+            const response = await fetch('https://huggingface.co/api/whoami-v2', {
+                headers: { 'Authorization': `Bearer ${key}` }
+            });
 
             if (response.ok) {
-                 return { status: 'active', title: 'Hoạt động tốt', message: 'Key Hugging Face hợp lệ.', advice: 'Key có thể được sử dụng cho các API inference. Một số model có thể yêu cầu trả phí.' };
+                const data = await response.json();
+                const userName = data.name || 'Không xác định';
+                return {
+                    status: 'active',
+                    title: 'Hoạt động tốt',
+                    message: `Key hợp lệ, được liên kết với tài khoản: ${userName}.`,
+                    advice: 'Key có thể được sử dụng cho các API của Hugging Face. Hãy kiểm tra quyền (read/write) của key nếu gặp sự cố.'
+                };
             }
 
-            switch(response.status) {
-                case 401: return { status: 'invalid', title: 'Key không hợp lệ', message: errorMessage, advice: 'Kiểm tra lại key của bạn. Đảm bảo bạn đã sao chép đúng từ trang cài đặt của Hugging Face.' };
-                case 403: return { status: 'limited', title: 'Yêu cầu trả phí', message: errorMessage, advice: 'Model này có thể yêu cầu trả phí hoặc bạn cần kích hoạt gói Pro. Hãy kiểm tra cài đặt thanh toán trên Hugging Face.' };
-                default: return { status: 'invalid', title: `Lỗi ${response.status}`, message: errorMessage, advice: 'Đã có lỗi xảy ra. Có thể model đang được tải hoặc có sự cố từ Hugging Face.' };
+            const errorMessage = `API trả về mã lỗi ${response.status}.`;
+            switch (response.status) {
+                case 401:
+                    return {
+                        status: 'invalid',
+                        title: 'Key không hợp lệ',
+                        message: 'API key không đúng hoặc đã bị thu hồi. Vui lòng kiểm tra lại.',
+                        advice: 'Hãy tạo một key mới trên trang cài đặt của Hugging Face và đảm bảo bạn đã sao chép đúng.'
+                    };
+                default:
+                    return {
+                        status: 'invalid',
+                        title: `Lỗi ${response.status}`,
+                        message: errorMessage,
+                        advice: 'Đã có lỗi xảy ra từ phía máy chủ Hugging Face. Vui lòng thử lại sau hoặc kiểm tra trang trạng thái của họ.'
+                    };
             }
         }
         
