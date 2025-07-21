@@ -153,7 +153,7 @@
                     <p id="modal-status" class="text-gray-700 p-2 rounded-md font-medium"></p>
                 </div>
                 <div class="mb-4">
-                    <p class="font-semibold text-gray-800">Thông điệp từ API:</p>
+                    <p class="font-semibold text-gray-800">Thông điệp từ API (gốc):</p>
                     <p id="modal-message" class="text-sm text-gray-700 bg-gray-100 p-3 rounded-md font-mono"></p>
                 </div>
                 <div>
@@ -366,9 +366,43 @@
             }
         });
 
+        // --- [FIXED] Logic sao chép vào clipboard ---
         function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => showToast('Đã sao chép vào clipboard!'))
-            .catch(() => showToast('Lỗi: Không thể sao chép!'));
+            // Tạo một thẻ textarea tạm thời để chứa text
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+
+            // Thiết lập style để nó vô hình và không ảnh hưởng layout
+            textArea.style.position = 'fixed';
+            textArea.style.top = '0';
+            textArea.style.left = '0';
+            textArea.style.width = '2em';
+            textArea.style.height = '2em';
+            textArea.style.padding = '0';
+            textArea.style.border = 'none';
+            textArea.style.outline = 'none';
+            textArea.style.boxShadow = 'none';
+            textArea.style.background = 'transparent';
+
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                // Thực thi lệnh copy
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showToast('Đã sao chép vào clipboard!');
+                } else {
+                    showToast('Lỗi: Không thể sao chép!');
+                }
+            } catch (err) {
+                showToast('Lỗi: Không thể sao chép!');
+                console.error('Lỗi khi sao chép:', err);
+            }
+
+            // Xóa thẻ textarea tạm thời
+            document.body.removeChild(textArea);
         }
         
         keyListDiv.addEventListener('click', async (e) => {
@@ -428,7 +462,7 @@
             const modalAdvice = statusDetailsModal.querySelector('#modal-advice');
             const modalHeader = statusDetailsModal.querySelector('#modal-header');
 
-            modalHeader.classList.remove('bg-green-100', 'bg-yellow-100', 'bg-red-100', 'bg-gray-100');
+            modalHeader.classList.remove('bg-green-100', 'bg-yellow-100', 'bg-red-100', 'bg-gray-100', 'text-green-800', 'text-yellow-800', 'text-red-800', 'text-gray-800');
             modalTitle.classList.remove('text-green-800', 'text-yellow-800', 'text-red-800', 'text-gray-800');
             
             modalTitle.textContent = title;
@@ -438,19 +472,19 @@
 
             switch(status) {
                 case 'active':
-                    modalHeader.classList.add('bg-green-100');
+                    modalHeader.classList.add('bg-green-100', 'text-green-800');
                     modalTitle.classList.add('text-green-800');
                     break;
                 case 'limited':
-                    modalHeader.classList.add('bg-yellow-100');
+                    modalHeader.classList.add('bg-yellow-100', 'text-yellow-800');
                     modalTitle.classList.add('text-yellow-800');
                     break;
                 case 'invalid':
-                    modalHeader.classList.add('bg-red-100');
+                    modalHeader.classList.add('bg-red-100', 'text-red-800');
                     modalTitle.classList.add('text-red-800');
                     break;
                 default:
-                    modalHeader.classList.add('bg-gray-100');
+                    modalHeader.classList.add('bg-gray-100', 'text-gray-800');
                     modalTitle.classList.add('text-gray-800');
             }
             statusDetailsModal.classList.remove('hidden');
