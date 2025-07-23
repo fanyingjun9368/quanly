@@ -11,7 +11,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { font-family: 'Be Vietnam Pro', sans-serif; }
-        .key-card { transition: all 0.3s ease-in-out; }
         .status-dot { width: 10px; height: 10px; border-radius: 50%; }
         .status-active { background-color: #22c55e; }
         .status-invalid { background-color: #ef4444; }
@@ -35,34 +34,81 @@
             font-weight: 900; /* Makes the star solid */
             color: #facc15; /* yellow-400 */
         }
-        /* Modal Styles */
-        .modal-overlay {
-            transition: opacity 0.3s ease;
+        .modal-overlay { transition: opacity 0.3s ease; }
+
+        /* --- CSS Tối ưu hóa cho Di động --- */
+        @media (max-width: 768px) {
+            /* Ẩn header của bảng trên màn hình nhỏ */
+            .api-group-table thead {
+                display: none;
+            }
+            /* Biến mỗi hàng thành một card */
+            .api-group-table tr {
+                display: block;
+                border: 1px solid #e5e7eb;
+                border-radius: 0.75rem;
+                margin-bottom: 1rem;
+                padding: 1rem;
+                box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            }
+            /* Biến mỗi ô thành một dòng, có nhãn ở trước */
+            .api-group-table td {
+                display: block;
+                text-align: right;
+                position: relative;
+                padding-left: 50%;
+                padding-top: 0.5rem;
+                padding-bottom: 0.5rem;
+                border-bottom: 1px solid #f3f4f6;
+            }
+            .api-group-table tr td:last-child {
+                border-bottom: none;
+            }
+            /* Tạo nhãn cho mỗi ô dữ liệu */
+            .api-group-table td:before {
+                content: attr(data-label);
+                position: absolute;
+                left: 0.75rem;
+                width: 45%;
+                padding-right: 0.5rem;
+                white-space: nowrap;
+                text-align: left;
+                font-weight: 600;
+                color: #4b5563;
+            }
+            /* Sắp xếp lại các nút hành động */
+            .action-buttons {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+                gap: 0.5rem;
+            }
+            .action-buttons > * {
+                flex-grow: 1; /* Các nút sẽ co giãn để lấp đầy không gian */
+            }
+            /* Căn chỉnh lại tên và key */
+            .api-group-table td[data-label="Tên gợi nhớ"],
+            .api-group-table td[data-label="API Key"] {
+                padding-left: 0.75rem;
+                text-align: left;
+            }
+            .api-group-table td[data-label="Tên gợi nhớ"]:before,
+            .api-group-table td[data-label="API Key"]:before {
+                display: none;
+            }
+            .card-name-container, .card-key-container {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
         }
-        /* Custom table styles */
-        .api-group-table th, .api-group-table td {
-            padding: 0.75rem;
-            text-align: left;
-            vertical-align: middle; /* Changed to middle for better alignment */
-        }
-        .api-group-table thead th {
-            background-color: #f3f4f6; /* gray-100 */
-            font-weight: 600;
-            color: #374151; /* gray-700 */
-        }
-        .api-group-table tbody tr:nth-child(even) {
-            background-color: #f9fafb; /* gray-50 */
-        }
-        .api-group-table tbody tr:hover {
-            background-color: #eff6ff; /* blue-50 */
-        }
-        /* Removed Drag and Drop styles */
     </style>
 </head>
 <body class="bg-[#fffbbe] text-gray-800">
     <div class="container mx-auto p-4 md:p-8 max-w-6xl">
-        <header id="app-header" class="flex justify-between items-center mb-10 hidden">
-            <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Trình Quản Lý API Key</h1>
+        <header id="app-header" class="flex flex-wrap justify-between items-center mb-10 hidden">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 w-full sm:w-auto mb-4 sm:mb-0">Trình Quản Lý API Key</h1>
             <div id="user-info" class="flex items-center gap-4">
                 <div class="text-right"><p id="user-name" class="font-semibold text-gray-900"></p></div>
                 <img id="user-avatar" class="w-12 h-12 rounded-full" src="" alt="User Avatar">
@@ -116,38 +162,36 @@
     <!-- Template cho hàng API key trong bảng -->
     <template id="key-row-template">
         <tr class="key-row" data-id="" data-value="" data-type="" data-favorite="" data-order="">
-            <td class="py-3 px-2 border-b border-gray-200">
-                <div class="flex items-center gap-2">
-                    <button title="Đánh dấu yêu thích" class="favorite-btn p-1 text-gray-400 hover:text-yellow-400 rounded-lg transition-colors">
+            <td data-label="Tên gợi nhớ">
+                <div class="card-name-container">
+                    <button title="Đánh dấu yêu thích" class="favorite-btn p-1 text-gray-400 hover:text-yellow-400 rounded-lg transition-colors mr-2">
                         <i class="far fa-star"></i>
                     </button>
-                    <!-- Thêm contenteditable để sửa tên gợi nhớ -->
-                    <span class="card-name text-sm font-medium text-gray-900 break-all" contenteditable="true"></span>
+                    <span class="card-name text-sm font-medium text-gray-900 break-all flex-grow" contenteditable="true"></span>
                 </div>
             </td>
-            <td class="py-3 px-2 border-b border-gray-200">
-                <div class="flex items-center gap-2">
-                    <p class="card-masked-key font-mono text-xs text-gray-500 break-all flex-grow"></p>
-                    <button title="Sao chép key" class="copy-btn p-1 text-gray-400 hover:text-indigo-600 rounded-lg transition-colors">
+            <td data-label="API Key">
+                 <div class="card-key-container">
+                    <p class="card-masked-key font-mono text-xs text-gray-500 break-all"></p>
+                    <button title="Sao chép key" class="copy-btn p-1 text-gray-400 hover:text-indigo-600 rounded-lg transition-colors ml-2">
                         <i class="far fa-copy"></i>
                     </button>
                 </div>
             </td>
-            <td class="py-3 px-2 border-b border-gray-200">
-                <div class="flex items-center gap-1">
+            <td data-label="Trạng thái">
+                <div class="flex items-center justify-end gap-1">
                     <div class="status-dot flex-shrink-0"></div>
-                    <p class="card-status-text text-xs text-gray-600 flex-grow">Chưa kiểm tra</p>
+                    <p class="card-status-text text-xs text-gray-600 flex-grow text-right">Chưa kiểm tra</p>
                 </div>
             </td>
-            <td class="py-3 px-2 border-b border-gray-200">
+            <td data-label="Ghi chú">
                 <textarea class="card-notes w-full bg-gray-50 p-1 rounded-md text-xs text-gray-800 resize-none border border-gray-200 focus:ring-1 focus:ring-indigo-500" rows="1" placeholder="Thêm ghi chú..."></textarea>
             </td>
-            <td class="py-3 px-2 border-b border-gray-200 text-right">
-                <div class="flex items-center justify-end space-x-1">
-                    <!-- Nút di chuyển lên/xuống -->
+            <td data-label="Hành động">
+                <div class="action-buttons">
                     <button title="Di chuyển lên" class="move-up-btn bg-gray-200 hover:bg-blue-200 text-gray-700 hover:text-blue-800 text-xs font-bold py-1 px-2 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"><i class="fas fa-arrow-up"></i></button>
                     <button title="Di chuyển xuống" class="move-down-btn bg-gray-200 hover:bg-blue-200 text-gray-700 hover:text-blue-800 text-xs font-bold py-1 px-2 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"><i class="fas fa-arrow-down"></i></button>
-                    <button class="check-btn btn-gradient text-white text-xs font-bold py-1 px-2 rounded-lg transition duration-300 flex items-center gap-1"><i class="fas fa-sync-alt"></i><span class="btn-text">Kiểm tra</span><div class="loader hidden"></div></button>
+                    <button class="check-btn btn-gradient text-white text-xs font-bold py-1 px-2 rounded-lg transition duration-300 flex items-center justify-center gap-1"><i class="fas fa-sync-alt"></i><span class="btn-text">Kiểm tra</span><div class="loader hidden"></div></button>
                     <button class="delete-btn bg-gray-200 hover:bg-red-200 text-gray-700 hover:text-red-800 text-xs font-bold py-1 px-2 rounded-lg transition"><i class="fas fa-trash"></i></button>
                 </div>
             </td>
@@ -155,7 +199,7 @@
     </template>
 
     <!-- Toast thông báo nhanh -->
-    <div id="toast" class="toast fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-800 text-white py-2 px-5 rounded-lg shadow-lg"></div>
+    <div id="toast" class="toast fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-800 text-white py-2 px-5 rounded-lg shadow-lg z-50"></div>
 
     <!-- Modal Xác nhận Xóa -->
     <div id="delete-confirm-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
@@ -352,7 +396,7 @@
                 const keysInGroup = groupedKeys[type].sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) || a.order - b.order);
 
                 const groupDiv = document.createElement('div');
-                groupDiv.className = 'bg-white p-6 rounded-xl shadow-lg';
+                groupDiv.className = 'bg-white p-4 md:p-6 rounded-xl shadow-lg';
                 groupDiv.dataset.type = type;
 
                 groupDiv.innerHTML = `
@@ -363,13 +407,13 @@
                         </h3>
                         <button class="check-group-btn w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2 disabled:bg-gray-400">
                             <i class="fas fa-sync-alt"></i>
-                            <span class="btn-text">Kiểm tra tất cả ${provider.name}</span>
+                            <span class="btn-text hidden md:inline">Kiểm tra nhóm</span>
                             <div class="loader hidden"></div>
                         </button>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 api-group-table">
-                            <thead>
+                        <table class="min-w-full api-group-table">
+                            <thead class="hidden md:table-header-group">
                                 <tr>
                                     <th class="py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Tên gợi nhớ</th>
                                     <th class="py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">API Key</th>
@@ -399,7 +443,6 @@
 
                     row.querySelector('.card-masked-key').textContent = `${key.value.substring(0, 4)}...${key.value.substring(key.value.length - 4)}`;
                     row.querySelector('.card-notes').value = key.notes || '';
-                    row.querySelector('.card-notes').dataset.keyId = key.id;
                     
                     const favoriteBtn = row.querySelector('.favorite-btn');
                     if (key.favorite) favoriteBtn.classList.add('is-favorite');
@@ -408,7 +451,6 @@
                     const gradientString = provider.gradient || 'from-gray-500 to-gray-600';
                     checkBtn.classList.add('bg-gradient-to-r', ...gradientString.split(' '));
 
-                    // Disable move buttons based on position
                     const moveUpBtn = row.querySelector('.move-up-btn');
                     const moveDownBtn = row.querySelector('.move-down-btn');
                     const siblingKeys = keysInGroup.filter(k => k.favorite === key.favorite);
@@ -426,7 +468,7 @@
         function updateCardStatus(row, status, message) {
             const statusDot = row.querySelector('.status-dot');
             const statusText = row.querySelector('.card-status-text');
-            statusDot.className = 'status-dot';
+            statusDot.className = 'status-dot flex-shrink-0';
             statusDot.classList.add(`status-${status || 'unknown'}`);
             statusText.textContent = message || 'Chưa kiểm tra';
         }
@@ -467,7 +509,7 @@
                 showToast("Đã thêm key thành công!");
                 apiKeyInput.value = ''; keyNameInput.value = '';
                 validateForm();
-                loadKeys();
+                await loadKeys();
             } catch (error) {
                 showToast(`Lỗi: ${error.message}`);
             }
@@ -549,14 +591,10 @@
         async function updateKey(keyId, updatedData) {
             const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
             if (!keyToUpdate) return;
-
-            const originalState = { ...keyToUpdate };
             
-            // Tạo trạng thái mới bằng cách hợp nhất dữ liệu cũ và dữ liệu cập nhật
             const newState = { ...keyToUpdate, ...updatedData };
 
             try {
-                // Luôn gửi đầy đủ payload từ trạng thái mới
                 const payload = {
                     name: newState.name,
                     notes: newState.notes || '',
@@ -569,21 +607,22 @@
                 
                 // Cập nhật trạng thái local sau khi server xác nhận thành công
                 Object.assign(keyToUpdate, newState);
+                
+                // Chỉ render lại toàn bộ nếu thay đổi cấu trúc (yêu thích, sắp xếp)
+                if (updatedData.hasOwnProperty('favorite') || updatedData.hasOwnProperty('order')) {
+                    renderKeys(allLoadedKeys);
+                }
 
             } catch (error) {
                 showToast(`Lỗi cập nhật: ${error.message}.`);
-                // Không làm gì với trạng thái local, vì sẽ tải lại ngay sau đó
-            } finally {
-                // Luôn tải lại từ server để đảm bảo giao diện đồng bộ 100%
+                // Tải lại toàn bộ từ server để đảm bảo trạng thái đúng
                 await loadKeys();
             }
         }
 
 
         // --- EVENT LISTENERS (ĐÃ CẤU TRÚC LẠI) ---
-
         keyGroupsContainer.addEventListener('click', async (e) => {
-            // Xử lý các hành động cấp nhóm (không nằm trong một hàng) trước
             const checkGroupBtn = e.target.closest('.check-group-btn');
             if (checkGroupBtn) {
                 const groupDiv = checkGroupBtn.closest('.bg-white');
@@ -596,12 +635,11 @@
                 }
                 setButtonLoading(checkGroupBtn, false);
                 showToast(`Đã hoàn tất kiểm tra tất cả các key của nhóm ${API_PROVIDERS[groupType]?.name || groupType}.`);
-                return; // Đã xử lý, thoát
+                return;
             }
 
-            // Xử lý các hành động cấp hàng
             const row = e.target.closest('.key-row');
-            if (!row) return; // Thoát nếu không phải hành động trên hàng
+            if (!row) return;
 
             const keyId = row.dataset.id;
             const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
@@ -641,7 +679,7 @@
                 if (newName && newName !== originalName) {
                     await updateKey(keyId, { name: newName });
                 } else if (!newName) {
-                    e.target.textContent = originalName; // Hoàn tác nếu để trống
+                    e.target.textContent = originalName;
                 }
             }
         });
@@ -663,7 +701,7 @@
             try {
                 await apiFetch(`/api/keys/${keyIdToDelete}`, { method: 'DELETE' });
                 showToast('Đã xóa key.');
-                loadKeys();
+                await loadKeys();
             } catch (error) {
                 showToast(`Lỗi xóa key: ${error.message}`);
             } finally {
@@ -679,8 +717,8 @@
             const modalAdvice = statusDetailsModal.querySelector('#modal-advice');
             const modalHeader = statusDetailsModal.querySelector('#modal-header');
 
-            modalHeader.className = 'flex justify-between items-center p-4 border-b rounded-t-lg'; // Reset classes
-            modalTitle.className = 'text-xl font-bold'; // Reset classes
+            modalHeader.className = 'flex justify-between items-center p-4 border-b rounded-t-lg';
+            modalTitle.className = 'text-xl font-bold';
             
             modalTitle.textContent = title;
             modalStatus.textContent = title;
@@ -711,7 +749,7 @@
             }
         }
         
-        // --- LOGIC KIỂM TRA API (ĐÃ NÂNG CẤP) ---
+        // --- LOGIC KIỂM TRA API ---
         async function checkKeyStatus(row, key, type) {
             const checkBtn = row.querySelector('.check-btn');
             setButtonLoading(checkBtn, true);
