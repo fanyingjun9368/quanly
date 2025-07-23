@@ -267,7 +267,7 @@
         const checkAllBtn = document.getElementById('check-all-btn');
         
         const deleteConfirmModal = document.getElementById('delete-confirm-modal');
-        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        const confirmDeleteBtn = document = document.getElementById('confirm-delete-btn');
         const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
 
         const statusDetailsModal = document.getElementById('status-details-modal');
@@ -295,7 +295,6 @@
                 card.dataset.id = key.id;
                 card.dataset.value = key.value;
                 card.dataset.type = key.type;
-                card.dataset.favorite = String(key.favorite);
                 card.querySelector('.card-name').textContent = key.name;
                 card.querySelector('.card-logo').innerHTML = provider.logo || '';
                 card.querySelector('.card-masked-key').textContent = `${key.value.substring(0, 4)}...${key.value.substring(key.value.length - 4)}`;
@@ -366,7 +365,7 @@
             }
         });
 
-        // --- [FIXED] Logic sao chép vào clipboard ---
+        // --- Logic sao chép vào clipboard ---
         function copyToClipboard(text) {
             // Tạo một thẻ textarea tạm thời để chứa text
             const textArea = document.createElement('textarea');
@@ -565,15 +564,24 @@
                 return { status: 'active', title: `Còn ${credits} credits`, message: `Key Stability AI hợp lệ. Số dư credits: ${credits}.`, advice: 'Bạn có thể sử dụng key này. Nạp thêm credits khi cần thiết.' };
             }
 
-            // Attempt to parse error data from the response
-            let errorData = {};
+            let errorData;
+            let errorMessage = `Lỗi từ Stability AI (Mã: ${response.status}).`; // Default error message
+
             try {
                 errorData = await response.json();
+                // Prioritize specific error messages from the API response
+                if (errorData.message) {
+                    errorMessage = errorData.message;
+                } else if (errorData.detail) {
+                    errorMessage = errorData.detail;
+                } else {
+                    errorMessage = JSON.stringify(errorData); // Fallback to stringifying the whole error object
+                }
             } catch (e) {
-                // If parsing fails, it's likely a non-JSON response or empty.
-                console.error("Failed to parse Stability AI error response:", e);
+                // If response is not JSON or parsing fails, use the default message.
+                console.error("Failed to parse Stability AI error response as JSON:", e);
+                // The errorMessage already contains the status, so no need to add more.
             }
-            const errorMessage = errorData.message || errorData.detail || JSON.stringify(errorData) || 'Không có thông tin lỗi.';
 
             switch (response.status) {
                 case 401: // Unauthorized - Key is invalid or revoked
