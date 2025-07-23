@@ -922,11 +922,12 @@
                 try {
                     await Promise.all(updatePromises);
                     showToast('Đã cập nhật thứ tự key thành công!');
-                    // Tải lại toàn bộ danh sách để đảm bảo dữ liệu đồng bộ hoàn toàn
-                    await loadKeys();
+                    // KHÔNG tải lại danh sách ở đây để tránh giật màn hình.
+                    // Giao diện đã được cập nhật tức thì và dữ liệu local cũng đã được cập nhật.
                 } catch (error) {
-                    showToast(`Lỗi khi cập nhật thứ tự: ${error.message}`);
-                    await loadKeys(); // Nếu có lỗi, tải lại để khôi phục trạng thái cũ từ server
+                    showToast(`Lỗi khi cập nhật thứ tự: ${error.message}. Đang hoàn tác...`);
+                    // Nếu có lỗi, tải lại để khôi phục trạng thái đúng từ server
+                    await loadKeys(); 
                 }
             }
         });
