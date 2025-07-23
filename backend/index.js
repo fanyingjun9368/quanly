@@ -64,11 +64,8 @@ async function authMiddleware(req, res, next) {
     }
 }
 
-// =========================================================
-// ✅ BẠN CHÈN ĐOẠN MÃ HEALTH CHECK VÀO ĐÂY
 // --- HEALTH CHECK ENDPOINT ---
 app.get('/api/health', (req, res) => {
-  // Kiểm tra trạng thái kết nối của mongoClient
   const isMongoConnected = mongoClient?.topology?.isConnected();
 
   if (isMongoConnected) {
@@ -83,7 +80,6 @@ app.get('/api/health', (req, res) => {
     });
   }
 });
-// =========================================================
 
 // --- API Endpoints ---
 
@@ -98,7 +94,7 @@ app.get('/api/keys', authMiddleware, async (req, res) => {
 
 app.post('/api/keys', authMiddleware, async (req, res) => {
     try {
-        const newKey = { ...req.body, user_id: req.userId, favorite: false };
+        const newKey = { ...req.body, user_id: req.userId };
         const result = await keysCollection.insertOne(newKey);
         res.status(201).json(result);
     } catch (err) {
@@ -106,17 +102,26 @@ app.post('/api/keys', authMiddleware, async (req, res) => {
     }
 });
 
-// --- FIX: Hợp nhất các endpoint cập nhật thành một ---
+// --- FIX: Endpoint cập nhật đã được sửa để xử lý tất cả các trường ---
 app.put('/api/keys/:id', authMiddleware, async (req, res) => {
-    const { notes, favorite } = req.body;
+    // Lấy tất cả các trường có thể được cập nhật từ body của request
+    const { name, notes, favorite, order } = req.body;
     
-    if (notes === undefined && favorite === undefined) {
-        return res.status(400).json({ error: "Either 'notes' or 'favorite' field is required for update." });
+    // Kiểm tra xem có ít nhất một trường được cung cấp để cập nhật không
+    if (name === undefined && notes === undefined && favorite === undefined && order === undefined) {
+        return res.status(400).json({ error: "At least one field (name, notes, favorite, order) is required for update." });
     }
 
     const updateFields = {};
+    // Thêm các trường vào đối tượng update nếu chúng tồn tại trong request
+    if (name !== undefined) {
+        updateFields.name = name;
+    }
     if (notes !== undefined) {
         updateFields.notes = notes;
+    }
+    if (order !== undefined) {
+        updateFields.order = order;
     }
     if (favorite !== undefined) {
         if (typeof favorite !== 'boolean') {
@@ -128,7 +133,7 @@ app.put('/api/keys/:id', authMiddleware, async (req, res) => {
     try {
         const result = await keysCollection.updateOne(
             { id: req.params.id, user_id: req.userId },
-            { $set: updateFields }
+            { $set: updateFields } // Sử dụng đối tượng update đã được xây dựng đầy đủ
         );
         if (result.matchedCount === 0) {
             return res.status(404).json({ error: "Key not found or user not authorized" });
