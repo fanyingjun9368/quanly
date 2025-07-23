@@ -489,7 +489,6 @@
             document.body.removeChild(textArea);
         }
         
-        // --- LOGIC SẮP XẾP MỚI (ĐÃ SỬA LỖI) ---
         async function handleMove(keyId, direction) {
             const keyToMove = allLoadedKeys.find(k => k.id === keyId);
             if (!keyToMove) return;
@@ -510,16 +509,13 @@
             if (adjacentIndex !== -1) {
                 const adjacentKey = siblingKeys[adjacentIndex];
                 
-                // Hoán đổi giá trị 'order' trong mảng local
                 const tempOrder = keyToMove.order;
                 keyToMove.order = adjacentKey.order;
                 adjacentKey.order = tempOrder;
 
-                // Cập nhật giao diện ngay lập tức (Optimistic UI Update)
                 renderKeys(allLoadedKeys);
                 showToast('Đang lưu thay đổi...');
 
-                // Gửi yêu cầu cập nhật lên backend
                 try {
                     const update1 = apiFetch(`/api/keys/${keyToMove.id}`, { 
                         method: 'PUT', 
@@ -542,39 +538,42 @@
                     showToast('Đã cập nhật thứ tự thành công.');
                 } catch (error) {
                     showToast(`Lỗi sắp xếp: ${error.message}. Đang hoàn tác...`);
-                    // Nếu lỗi, hoàn tác thay đổi trong mảng local
                     adjacentKey.order = keyToMove.order;
                     keyToMove.order = tempOrder;
-                    // và tải lại dữ liệu gốc từ server để đảm bảo đồng bộ
                     await loadKeys();
                 }
             }
         }
 
-        // Event listener cho các hành động trong các hàng key
+        // --- EVENT LISTENERS (ĐÃ SỬA LỖI) ---
+
         keyGroupsContainer.addEventListener('click', async (e) => {
             const row = e.target.closest('.key-row');
             if (!row) return;
-
             const keyId = row.dataset.id;
-            
+            const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
+            if (!keyToUpdate) return;
+
             if (e.target.closest('.favorite-btn')) {
-                const isCurrentlyFavorite = row.dataset.favorite === 'true';
-                const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
-                if (keyToUpdate) {
-                    try {
-                        // Gửi đầy đủ thông tin khi cập nhật favorite
-                        await apiFetch(`/api/keys/${keyId}`, { 
-                            method: 'PUT', 
-                            body: JSON.stringify({ 
-                                favorite: !isCurrentlyFavorite,
-                                notes: keyToUpdate.notes || ''
-                            }) 
-                        });
-                        loadKeys();
-                    } catch (error) {
-                        showToast(`Lỗi cập nhật yêu thích: ${error.message}`);
-                    }
+                const isCurrentlyFavorite = keyToUpdate.favorite;
+                keyToUpdate.favorite = !isCurrentlyFavorite;
+                renderKeys(allLoadedKeys);
+                showToast('Đang cập nhật...');
+
+                try {
+                    const payload = {
+                        name: keyToUpdate.name,
+                        notes: keyToUpdate.notes || '',
+                        favorite: keyToUpdate.favorite,
+                        order: keyToUpdate.order
+                    };
+                    await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify(payload) });
+                    showToast('Đã cập nhật trạng thái yêu thích.');
+                    await loadKeys();
+                } catch (error) {
+                    showToast(`Lỗi: ${error.message}`);
+                    keyToUpdate.favorite = isCurrentlyFavorite; // Revert on error
+                    await loadKeys();
                 }
             } else if (e.target.closest('.copy-btn')) {
                 copyToClipboard(row.dataset.value);
@@ -587,6 +586,53 @@
                 await handleMove(keyId, 'up');
             } else if (e.target.closest('.move-down-btn')) {
                 await handleMove(keyId, 'down');
+            }
+        });
+
+        keyGroupsContainer.addEventListener('focusout', async (e) => {
+            const row = e.target.closest('.key-row');
+            if (!row) return;
+            const keyId = row.dataset.id;
+            const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
+            if (!keyToUpdate) return;
+            
+            let changed = false;
+            let originalValue;
+
+            if (e.target.matches('.card-notes')) {
+                const newNotes = e.target.value;
+                originalValue = keyToUpdate.notes || '';
+                if (newNotes !== originalValue) {
+                    keyToUpdate.notes = newNotes;
+                    changed = true;
+                }
+            } else if (e.target.matches('.card-name')) {
+                const newName = e.target.textContent.trim();
+                originalValue = row.dataset.originalName;
+                if (newName && newName !== originalValue) {
+                    keyToUpdate.name = newName;
+                    row.dataset.originalName = newName;
+                    changed = true;
+                } else if (!newName) {
+                    e.target.textContent = originalValue;
+                    keyToUpdate.name = originalValue;
+                }
+            }
+
+            if (changed) {
+                try {
+                    const payload = {
+                        name: keyToUpdate.name,
+                        notes: keyToUpdate.notes || '',
+                        favorite: keyToUpdate.favorite,
+                        order: keyToUpdate.order
+                    };
+                    await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify(payload) });
+                    showToast('Đã lưu thay đổi thành công.');
+                } catch (error) {
+                    showToast(`Lỗi cập nhật: ${error.message}`);
+                    await loadKeys(); // Reload to revert failed changes
+                }
             }
         });
 
@@ -661,55 +707,6 @@
         }
 
         closeModalBtn.addEventListener('click', () => statusDetailsModal.classList.add('hidden'));
-
-        // Event listener cho textarea ghi chú và span tên gợi nhớ khi mất focus (lưu thay đổi)
-        keyGroupsContainer.addEventListener('focusout', async (e) => {
-            const row = e.target.closest('.key-row');
-            if (!row) return;
-            const keyId = row.dataset.id;
-            const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
-            if (!keyToUpdate) return;
-            
-            let updatedField = {};
-            let changed = false;
-
-            if (e.target.matches('.card-notes')) {
-                const newNotes = e.target.value;
-                if (newNotes !== (keyToUpdate.notes || '')) {
-                    updatedField.notes = newNotes;
-                    keyToUpdate.notes = newNotes; // Update local cache immediately
-                    changed = true;
-                }
-            } else if (e.target.matches('.card-name')) {
-                const newName = e.target.textContent.trim();
-                if (newName && newName !== row.dataset.originalName) {
-                    updatedField.name = newName;
-                    keyToUpdate.name = newName; // Update local cache
-                    row.dataset.originalName = newName; // Update original name tracker
-                    changed = true;
-                } else if (!newName) {
-                    e.target.textContent = row.dataset.originalName; // Revert if empty
-                }
-            }
-
-            if (changed) {
-                try {
-                    // Gửi đầy đủ thông tin khi cập nhật
-                    const payload = {
-                        notes: keyToUpdate.notes || '',
-                        favorite: keyToUpdate.favorite
-                    };
-                    if (updatedField.name) {
-                        payload.name = updatedField.name;
-                    }
-                    await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify(payload) });
-                    showToast(`Đã cập nhật ${Object.keys(updatedField)[0]}.`);
-                } catch (error) {
-                    showToast(`Lỗi cập nhật: ${error.message}`);
-                    loadKeys(); // Reload to revert failed changes
-                }
-            }
-        });
 
         function setButtonLoading(btn, isLoading) {
             const btnText = btn.querySelector('.btn-text');
