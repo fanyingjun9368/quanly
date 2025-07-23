@@ -253,13 +253,27 @@
             'openai': { name: 'OpenAI', regex: /^sk-[A-Za-z0-9]{20,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-teal-500"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>`, gradient: 'from-teal-500 to-cyan-500' },
         };
 
-        // --- Logic Giao tiếp Backend ---
+        // --- Logic Giao tiếp Backend (ĐÃ CẬP NHẬT) ---
         async function apiFetch(endpoint, options = {}) {
             if (!idToken) throw new Error("User not authenticated");
-            const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}`, ...options.headers };
+
+            const fetchOptions = {
+                ...options,
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': `Bearer ${idToken}`, 
+                    ...options.headers 
+                },
+            };
+
+            // *** FIX: Luôn bỏ qua cache cho các yêu cầu GET để đảm bảo dữ liệu mới nhất ***
+            if (!options.method || options.method.toUpperCase() === 'GET') {
+                fetchOptions.cache = 'no-store';
+            }
+
             let response;
             try {
-                response = await fetch(`${BACKEND_URL}${endpoint}`, { ...options, headers });
+                response = await fetch(`${BACKEND_URL}${endpoint}`, fetchOptions);
             } catch (networkError) {
                 console.error("Network error:", networkError);
                 throw new Error("Lỗi mạng. Không thể kết nối đến máy chủ.");
@@ -550,35 +564,25 @@
             if (adjacentIndex !== -1) {
                 const adjacentKey = siblingKeys[adjacentIndex];
                 
-                // Swap orders
                 const tempOrder = keyToMove.order;
                 keyToMove.order = adjacentKey.order;
                 adjacentKey.order = tempOrder;
 
-                // Optimistically render the change
                 renderKeys(allLoadedKeys);
                 showToast('Đang lưu thay đổi vị trí...');
 
                 try {
-                    // Send both updates to the server
                     await Promise.all([
                         updateKey(keyToMove.id, { order: keyToMove.order }),
                         updateKey(adjacentKey.id, { order: adjacentKey.order })
                     ]);
-                    
-                    // No need to show another toast, updateKey will reload and confirm
                 } catch (error) {
                     showToast(`Lỗi sắp xếp: ${error.message}. Đang hoàn tác...`);
-                    // If server update fails, reload from server to revert
                     await loadKeys();
                 }
             }
         }
         
-        // --- HÀM CẬP NHẬT TRUNG TÂM (PHIÊN BẢN MỚI, ĐỒNG BỘ TUYỆT ĐỐI) ---
-        // Chức năng: Gửi yêu cầu cập nhật lên máy chủ và sau đó
-        // LUÔN LUÔN tải lại toàn bộ dữ liệu để đảm bảo giao diện
-        // phản ánh chính xác 100% trạng thái trên cơ sở dữ liệu.
         async function updateKey(keyId, updatedData) {
             const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
             if (!keyToUpdate) {
@@ -586,7 +590,6 @@
                 return;
             }
 
-            // Tạo payload với dữ liệu đầy đủ để tránh lỗi server
             const payload = {
                 name: updatedData.name !== undefined ? updatedData.name : keyToUpdate.name,
                 notes: updatedData.notes !== undefined ? updatedData.notes : keyToUpdate.notes,
@@ -595,21 +598,14 @@
             };
 
             try {
-                // 1. Gửi yêu cầu cập nhật lên server
                 await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify(payload) });
-                
                 showToast('Đã lưu thay đổi. Đang đồng bộ hóa...');
-                
-                // 2. Luôn tải lại toàn bộ dữ liệu từ server để đảm bảo đồng bộ tuyệt đối
                 await loadKeys();
-                
             } catch (error) {
                 showToast(`Lỗi cập nhật: ${error.message}. Đang khôi phục...`);
-                // Nếu có lỗi, cũng tải lại từ server để đảm bảo trạng thái đúng
                 await loadKeys();
             }
         }
-
 
         // --- EVENT LISTENERS (ĐÃ CẤU TRÚC LẠI) ---
         keyGroupsContainer.addEventListener('click', async (e) => {
@@ -651,7 +647,6 @@
             }
         });
         
-        // --- EVENT LISTENER CHO VIỆC CHỈNH SỬA TRỰC TIẾP (TÊN VÀ GHI CHÚ) ---
         keyGroupsContainer.addEventListener('focusout', async (e) => {
             const row = e.target.closest('.key-row');
             if (!row) return;
@@ -660,25 +655,27 @@
             const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
             if (!keyToUpdate) return;
             
-            // Xử lý khi chỉnh sửa Ghi chú
             if (e.target.matches('.card-notes')) {
                 const newNotes = e.target.value;
-                // Chỉ gửi yêu cầu nếu có thay đổi
                 if (newNotes !== (keyToUpdate.notes || '')) {
                     await updateKey(keyId, { notes: newNotes });
                 }
             } 
-            // Xử lý khi chỉnh sửa Tên gợi nhớ
             else if (e.target.matches('.card-name')) {
                 const newName = e.target.textContent.trim();
-                
-                // So sánh với dữ liệu thực tế, không phải dataset cũ
                 if (newName && newName !== keyToUpdate.name) {
                     await updateKey(keyId, { name: newName });
                 } else if (!newName) {
-                    // Nếu người dùng xóa hết tên, khôi phục lại tên cũ từ dữ liệu
                     e.target.textContent = keyToUpdate.name;
                 }
+            }
+        });
+
+        // *** MỚI: Thêm event listener cho phím Enter để lưu thay đổi ***
+        keyGroupsContainer.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && (e.target.matches('.card-name') || e.target.matches('.card-notes'))) {
+                e.preventDefault(); // Ngăn hành vi mặc định (như xuống dòng trong textarea)
+                e.target.blur();    // Làm cho element mất focus, sẽ trigger 'focusout' để lưu
             }
         });
 
