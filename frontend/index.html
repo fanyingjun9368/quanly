@@ -489,12 +489,11 @@
             document.body.removeChild(textArea);
         }
         
-        // --- LOGIC SẮP XẾP MỚI ---
+        // --- LOGIC SẮP XẾP MỚI (ĐÃ SỬA LỖI) ---
         async function handleMove(keyId, direction) {
             const keyToMove = allLoadedKeys.find(k => k.id === keyId);
             if (!keyToMove) return;
 
-            // Lấy danh sách các key cùng loại và cùng trạng thái yêu thích, sắp xếp theo 'order'
             const siblingKeys = allLoadedKeys
                 .filter(k => k.type === keyToMove.type && k.favorite === keyToMove.favorite)
                 .sort((a, b) => a.order - b.order);
@@ -511,16 +510,17 @@
             if (adjacentIndex !== -1) {
                 const adjacentKey = siblingKeys[adjacentIndex];
                 
-                // Hoán đổi giá trị 'order'
+                // Hoán đổi giá trị 'order' trong mảng local
                 const tempOrder = keyToMove.order;
                 keyToMove.order = adjacentKey.order;
                 adjacentKey.order = tempOrder;
 
-                // Vô hiệu hóa các nút trên giao diện để tránh click đúp
-                document.querySelectorAll('.move-up-btn, .move-down-btn').forEach(btn => btn.disabled = true);
+                // Cập nhật giao diện ngay lập tức (Optimistic UI Update)
+                renderKeys(allLoadedKeys);
+                showToast('Đang lưu thay đổi...');
 
+                // Gửi yêu cầu cập nhật lên backend
                 try {
-                    // Cập nhật cả hai key lên backend, bao gồm các trường bắt buộc
                     const update1 = apiFetch(`/api/keys/${keyToMove.id}`, { 
                         method: 'PUT', 
                         body: JSON.stringify({ 
@@ -539,14 +539,13 @@
                     });
                     
                     await Promise.all([update1, update2]);
-                    showToast('Đã cập nhật thứ tự.');
+                    showToast('Đã cập nhật thứ tự thành công.');
                 } catch (error) {
-                    showToast(`Lỗi sắp xếp: ${error.message}`);
-                    // Hoàn tác thay đổi nếu có lỗi
+                    showToast(`Lỗi sắp xếp: ${error.message}. Đang hoàn tác...`);
+                    // Nếu lỗi, hoàn tác thay đổi trong mảng local
                     adjacentKey.order = keyToMove.order;
                     keyToMove.order = tempOrder;
-                } finally {
-                    // Tải lại toàn bộ danh sách để đảm bảo giao diện nhất quán
+                    // và tải lại dữ liệu gốc từ server để đảm bảo đồng bộ
                     await loadKeys();
                 }
             }
@@ -564,7 +563,14 @@
                 const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
                 if (keyToUpdate) {
                     try {
-                        await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify({ favorite: !isCurrentlyFavorite }) });
+                        // Gửi đầy đủ thông tin khi cập nhật favorite
+                        await apiFetch(`/api/keys/${keyId}`, { 
+                            method: 'PUT', 
+                            body: JSON.stringify({ 
+                                favorite: !isCurrentlyFavorite,
+                                notes: keyToUpdate.notes || ''
+                            }) 
+                        });
                         loadKeys();
                     } catch (error) {
                         showToast(`Lỗi cập nhật yêu thích: ${error.message}`);
@@ -688,7 +694,15 @@
 
             if (changed) {
                 try {
-                    await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify(updatedField) });
+                    // Gửi đầy đủ thông tin khi cập nhật
+                    const payload = {
+                        notes: keyToUpdate.notes || '',
+                        favorite: keyToUpdate.favorite
+                    };
+                    if (updatedField.name) {
+                        payload.name = updatedField.name;
+                    }
+                    await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify(payload) });
                     showToast(`Đã cập nhật ${Object.keys(updatedField)[0]}.`);
                 } catch (error) {
                     showToast(`Lỗi cập nhật: ${error.message}`);
