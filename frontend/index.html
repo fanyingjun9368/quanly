@@ -429,7 +429,7 @@
                 `;
                 
                 const tbody = groupDiv.querySelector('tbody');
-                keysInGroup.forEach((key, index) => {
+                keysInGroup.forEach((key) => {
                     const row = keyRowTemplate.content.cloneNode(true).firstElementChild;
                     row.dataset.id = key.id;
                     row.dataset.value = key.value;
@@ -439,8 +439,7 @@
 
                     const nameSpan = row.querySelector('.card-name');
                     nameSpan.textContent = key.name;
-                    nameSpan.dataset.originalName = key.name;
-
+                    
                     row.querySelector('.card-masked-key').textContent = `${key.value.substring(0, 4)}...${key.value.substring(key.value.length - 4)}`;
                     row.querySelector('.card-notes').value = key.notes || '';
                     
@@ -551,71 +550,62 @@
             if (adjacentIndex !== -1) {
                 const adjacentKey = siblingKeys[adjacentIndex];
                 
+                // Swap orders
                 const tempOrder = keyToMove.order;
                 keyToMove.order = adjacentKey.order;
                 adjacentKey.order = tempOrder;
 
+                // Optimistically render the change
                 renderKeys(allLoadedKeys);
-                showToast('Đang lưu thay đổi...');
+                showToast('Đang lưu thay đổi vị trí...');
 
                 try {
-                    const update1 = apiFetch(`/api/keys/${keyToMove.id}`, { 
-                        method: 'PUT', 
-                        body: JSON.stringify({ 
-                            order: keyToMove.order,
-                            notes: keyToMove.notes || '',
-                            favorite: keyToMove.favorite
-                        }) 
-                    });
-                    const update2 = apiFetch(`/api/keys/${adjacentKey.id}`, { 
-                        method: 'PUT', 
-                        body: JSON.stringify({ 
-                            order: adjacentKey.order,
-                            notes: adjacentKey.notes || '',
-                            favorite: adjacentKey.favorite
-                        }) 
-                    });
+                    // Send both updates to the server
+                    await Promise.all([
+                        updateKey(keyToMove.id, { order: keyToMove.order }),
+                        updateKey(adjacentKey.id, { order: adjacentKey.order })
+                    ]);
                     
-                    await Promise.all([update1, update2]);
-                    showToast('Đã cập nhật thứ tự thành công.');
+                    // No need to show another toast, updateKey will reload and confirm
                 } catch (error) {
                     showToast(`Lỗi sắp xếp: ${error.message}. Đang hoàn tác...`);
-                    adjacentKey.order = keyToMove.order;
-                    keyToMove.order = tempOrder;
+                    // If server update fails, reload from server to revert
                     await loadKeys();
                 }
             }
         }
         
-        // --- HÀM CẬP NHẬT TRUNG TÂM (ĐÃ SỬA LỖI) ---
+        // --- HÀM CẬP NHẬT TRUNG TÂM (PHIÊN BẢN MỚI, ĐỒNG BỘ TUYỆT ĐỐI) ---
+        // Chức năng: Gửi yêu cầu cập nhật lên máy chủ và sau đó
+        // LUÔN LUÔN tải lại toàn bộ dữ liệu để đảm bảo giao diện
+        // phản ánh chính xác 100% trạng thái trên cơ sở dữ liệu.
         async function updateKey(keyId, updatedData) {
             const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
-            if (!keyToUpdate) return;
-            
-            const newState = { ...keyToUpdate, ...updatedData };
+            if (!keyToUpdate) {
+                console.error("Key not found for update:", keyId);
+                return;
+            }
+
+            // Tạo payload với dữ liệu đầy đủ để tránh lỗi server
+            const payload = {
+                name: updatedData.name !== undefined ? updatedData.name : keyToUpdate.name,
+                notes: updatedData.notes !== undefined ? updatedData.notes : keyToUpdate.notes,
+                favorite: updatedData.favorite !== undefined ? updatedData.favorite : keyToUpdate.favorite,
+                order: updatedData.order !== undefined ? updatedData.order : keyToUpdate.order,
+            };
 
             try {
-                const payload = {
-                    name: newState.name,
-                    notes: newState.notes || '',
-                    favorite: newState.favorite,
-                    order: newState.order
-                };
-                
+                // 1. Gửi yêu cầu cập nhật lên server
                 await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify(payload) });
-                showToast('Đã lưu thay đổi thành công.');
                 
-                // Cập nhật trạng thái local sau khi server xác nhận thành công
-                Object.assign(keyToUpdate, newState);
+                showToast('Đã lưu thay đổi. Đang đồng bộ hóa...');
                 
-                // Chỉ render lại toàn bộ nếu thay đổi cấu trúc (yêu thích, sắp xếp)
-                if (updatedData.hasOwnProperty('favorite') || updatedData.hasOwnProperty('order')) {
-                    renderKeys(allLoadedKeys);
-                }
-
+                // 2. Luôn tải lại toàn bộ dữ liệu từ server để đảm bảo đồng bộ tuyệt đối
+                await loadKeys();
+                
             } catch (error) {
-                showToast(`Lỗi cập nhật: ${error.message}.`);
-                // Tải lại toàn bộ từ server để đảm bảo trạng thái đúng
+                showToast(`Lỗi cập nhật: ${error.message}. Đang khôi phục...`);
+                // Nếu có lỗi, cũng tải lại từ server để đảm bảo trạng thái đúng
                 await loadKeys();
             }
         }
@@ -660,26 +650,34 @@
                 await handleMove(keyId, 'down');
             }
         });
-
+        
+        // --- EVENT LISTENER CHO VIỆC CHỈNH SỬA TRỰC TIẾP (TÊN VÀ GHI CHÚ) ---
         keyGroupsContainer.addEventListener('focusout', async (e) => {
             const row = e.target.closest('.key-row');
             if (!row) return;
+
             const keyId = row.dataset.id;
             const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
             if (!keyToUpdate) return;
             
+            // Xử lý khi chỉnh sửa Ghi chú
             if (e.target.matches('.card-notes')) {
                 const newNotes = e.target.value;
+                // Chỉ gửi yêu cầu nếu có thay đổi
                 if (newNotes !== (keyToUpdate.notes || '')) {
                     await updateKey(keyId, { notes: newNotes });
                 }
-            } else if (e.target.matches('.card-name')) {
+            } 
+            // Xử lý khi chỉnh sửa Tên gợi nhớ
+            else if (e.target.matches('.card-name')) {
                 const newName = e.target.textContent.trim();
-                const originalName = row.dataset.originalName;
-                if (newName && newName !== originalName) {
+                
+                // So sánh với dữ liệu thực tế, không phải dataset cũ
+                if (newName && newName !== keyToUpdate.name) {
                     await updateKey(keyId, { name: newName });
                 } else if (!newName) {
-                    e.target.textContent = originalName;
+                    // Nếu người dùng xóa hết tên, khôi phục lại tên cũ từ dữ liệu
+                    e.target.textContent = keyToUpdate.name;
                 }
             }
         });
