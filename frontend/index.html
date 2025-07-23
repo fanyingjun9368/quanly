@@ -525,7 +525,7 @@
                         method: 'PUT', 
                         body: JSON.stringify({ 
                             order: keyToMove.order,
-                            notes: keyToMove.notes,
+                            notes: keyToMove.notes || '',
                             favorite: keyToMove.favorite
                         }) 
                     });
@@ -533,7 +533,7 @@
                         method: 'PUT', 
                         body: JSON.stringify({ 
                             order: adjacentKey.order,
-                            notes: adjacentKey.notes,
+                            notes: adjacentKey.notes || '',
                             favorite: adjacentKey.favorite
                         }) 
                     });
