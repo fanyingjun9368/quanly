@@ -798,10 +798,10 @@
                     key1.order = key2.order;
                     key2.order = tempOrder;
 
-                    // Gửi cập nhật lên backend
+                    // Gửi cập nhật lên backend, bao gồm notes và favorite
                     try {
-                        await apiFetch(`/api/keys/${key1.id}`, { method: 'PUT', body: JSON.stringify({ order: key1.order }) });
-                        await apiFetch(`/api/keys/${key2.id}`, { method: 'PUT', body: JSON.stringify({ order: key2.order }) });
+                        await apiFetch(`/api/keys/${key1.id}`, { method: 'PUT', body: JSON.stringify({ order: key1.order, notes: key1.notes, favorite: key1.favorite }) });
+                        await apiFetch(`/api/keys/${key2.id}`, { method: 'PUT', body: JSON.stringify({ order: key2.order, notes: key2.notes, favorite: key2.favorite }) });
                         
                         showToast('Đã sắp xếp lại API key.');
                         loadKeys(); // Tải lại và render để đảm bảo trạng thái nhất quán
