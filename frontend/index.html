@@ -558,25 +558,37 @@
 
         async function checkStabilityKey(key) {
             const response = await fetch('https://api.stability.ai/v1/user/account', { headers: { 'Authorization': `Bearer ${key}` } });
+
             if (response.ok) {
                 const data = await response.json();
                 const credits = (data.credits ?? 0).toLocaleString('vi-VN');
                 return { status: 'active', title: `Còn ${credits} credits`, message: `Key Stability AI hợp lệ. Số dư credits: ${credits}.`, advice: 'Bạn có thể sử dụng key này. Nạp thêm credits khi cần thiết.' };
             }
-            // Cố gắng phân tích cú pháp lỗi JSON, nếu không thành công thì cung cấp thông báo lỗi chung.
-            let errorMessage = 'Không có thông tin lỗi.';
-            try {
-                const errorData = await response.json();
-                errorMessage = errorData.message || JSON.stringify(errorData);
-            } catch (e) {
-                // Nếu không thể phân tích cú pháp JSON, có thể do phản hồi không phải JSON hoặc trống.
-                // Trong trường hợp này, errorMessage sẽ giữ giá trị mặc định.
-            }
 
-            if (response.status === 401) {
-                return { status: 'invalid', title: 'Key không hợp lệ', message: 'API key không đúng hoặc đã bị thu hồi.', advice: 'Hãy tạo một key mới trên trang DreamStudio hoặc kiểm tra lại key của bạn.' };
+            // Attempt to parse error data from the response
+            let errorData = {};
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                // If parsing fails, it's likely a non-JSON response or empty.
+                console.error("Failed to parse Stability AI error response:", e);
             }
-            return { status: 'invalid', title: `Lỗi ${response.status}`, message: errorMessage, advice: 'Đã có lỗi xảy ra từ phía Stability AI. Vui lòng thử lại sau.' };
+            const errorMessage = errorData.message || errorData.detail || JSON.stringify(errorData) || 'Không có thông tin lỗi.';
+
+            switch (response.status) {
+                case 401: // Unauthorized - Key is invalid or revoked
+                    return { status: 'invalid', title: 'Key không hợp lệ', message: 'API key không đúng hoặc đã bị thu hồi.', advice: 'Hãy tạo một key mới trên trang DreamStudio hoặc kiểm tra lại key của bạn.' };
+                case 429: // Too Many Requests - Rate limit exceeded
+                    return { status: 'limited', title: 'Vượt giới hạn truy vấn', message: errorMessage, advice: 'Bạn đã gửi quá nhiều yêu cầu. Vui lòng chờ một lát rồi thử lại.' };
+                case 403: // Forbidden - Could be quota exceeded or permission issue
+                    // Stability AI might return 403 for insufficient credits or billing issues.
+                    if (errorMessage.includes('insufficient_credits') || errorMessage.includes('billing_issue')) {
+                        return { status: 'limited', title: 'Hết hạn mức / Lỗi thanh toán', message: errorMessage, advice: 'Tài khoản của bạn có thể đã hết credits hoặc có vấn đề về thanh toán. Vui lòng kiểm tra trên trang DreamStudio.' };
+                    }
+                    return { status: 'invalid', title: `Lỗi truy cập ${response.status}`, message: errorMessage, advice: 'Key không có quyền truy cập hoặc có lỗi khác. Vui lòng kiểm tra lại.' };
+                default: // Generic error
+                    return { status: 'invalid', title: `Lỗi ${response.status}`, message: errorMessage, advice: 'Đã có lỗi xảy ra từ phía Stability AI. Vui lòng thử lại sau.' };
+            }
         }
 
         async function checkHuggingFaceKey(key) {
