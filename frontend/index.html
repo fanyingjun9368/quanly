@@ -563,8 +563,16 @@
                 const credits = (data.credits ?? 0).toLocaleString('vi-VN');
                 return { status: 'active', title: `Còn ${credits} credits`, message: `Key Stability AI hợp lệ. Số dư credits: ${credits}.`, advice: 'Bạn có thể sử dụng key này. Nạp thêm credits khi cần thiết.' };
             }
-            const errorData = await response.json().catch(() => ({}));
-            const errorMessage = errorData.message || 'Không có thông tin lỗi.';
+            // Cố gắng phân tích cú pháp lỗi JSON, nếu không thành công thì cung cấp thông báo lỗi chung.
+            let errorMessage = 'Không có thông tin lỗi.';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.message || JSON.stringify(errorData);
+            } catch (e) {
+                // Nếu không thể phân tích cú pháp JSON, có thể do phản hồi không phải JSON hoặc trống.
+                // Trong trường hợp này, errorMessage sẽ giữ giá trị mặc định.
+            }
+
             if (response.status === 401) {
                 return { status: 'invalid', title: 'Key không hợp lệ', message: 'API key không đúng hoặc đã bị thu hồi.', advice: 'Hãy tạo một key mới trên trang DreamStudio hoặc kiểm tra lại key của bạn.' };
             }
