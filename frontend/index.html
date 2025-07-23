@@ -267,7 +267,7 @@
         const checkAllBtn = document.getElementById('check-all-btn');
         
         const deleteConfirmModal = document.getElementById('delete-confirm-modal');
-        const confirmDeleteBtn = document = document.getElementById('confirm-delete-btn');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
         const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
 
         const statusDetailsModal = document.getElementById('status-details-modal');
@@ -295,6 +295,7 @@
                 card.dataset.id = key.id;
                 card.dataset.value = key.value;
                 card.dataset.type = key.type;
+                card.dataset.favorite = String(key.favorite);
                 card.querySelector('.card-name').textContent = key.name;
                 card.querySelector('.card-logo').innerHTML = provider.logo || '';
                 card.querySelector('.card-masked-key').textContent = `${key.value.substring(0, 4)}...${key.value.substring(key.value.length - 4)}`;
@@ -365,13 +366,9 @@
             }
         });
 
-        // --- Logic sao chép vào clipboard ---
         function copyToClipboard(text) {
-            // Tạo một thẻ textarea tạm thời để chứa text
             const textArea = document.createElement('textarea');
             textArea.value = text;
-
-            // Thiết lập style để nó vô hình và không ảnh hưởng layout
             textArea.style.position = 'fixed';
             textArea.style.top = '0';
             textArea.style.left = '0';
@@ -382,13 +379,10 @@
             textArea.style.outline = 'none';
             textArea.style.boxShadow = 'none';
             textArea.style.background = 'transparent';
-
             document.body.appendChild(textArea);
             textArea.focus();
             textArea.select();
-
             try {
-                // Thực thi lệnh copy
                 const successful = document.execCommand('copy');
                 if (successful) {
                     showToast('Đã sao chép vào clipboard!');
@@ -399,8 +393,6 @@
                 showToast('Lỗi: Không thể sao chép!');
                 console.error('Lỗi khi sao chép:', err);
             }
-
-            // Xóa thẻ textarea tạm thời
             document.body.removeChild(textArea);
         }
         
@@ -540,14 +532,26 @@
             updateCardStatus(card, result.status, result.title);
             return result;
         }
+        
+        // Helper function to parse error response
+        async function getErrorMessage(response) {
+            try {
+                const errorData = await response.json();
+                if (errorData.error && errorData.error.message) return errorData.error.message;
+                if (errorData.message) return errorData.message;
+                if (errorData.errors) return errorData.errors.join(', ');
+                return JSON.stringify(errorData);
+            } catch (e) {
+                return `API trả về mã lỗi ${response.status} nhưng không có nội dung lỗi JSON.`;
+            }
+        }
 
         async function checkGoogleKey(key) {
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
             if (response.ok) {
                 return { status: 'active', title: 'Hoạt động tốt', message: 'Key Google AI (Gemini) hợp lệ và đang hoạt động.', advice: 'Bạn có thể sử dụng key này. Hãy theo dõi hạn mức sử dụng trên Google AI Studio.' };
             }
-            const errorData = await response.json();
-            const errorMessage = errorData.error?.message || 'Không có thông tin lỗi.';
+            const errorMessage = await getErrorMessage(response);
             switch(response.status) {
                 case 400: return { status: 'invalid', title: 'Key không hợp lệ', message: errorMessage, advice: 'Kiểm tra lại key đã sao chép đúng chưa. Key có thể đã bị xóa hoặc sai định dạng.' };
                 case 429: return { status: 'limited', title: 'Vượt giới hạn truy vấn', message: errorMessage, advice: 'Bạn đã gửi quá nhiều yêu cầu. Vui lòng chờ một lát (thường là 1 phút) rồi thử lại.' };
@@ -557,81 +561,30 @@
 
         async function checkStabilityKey(key) {
             const response = await fetch('https://api.stability.ai/v1/user/account', { headers: { 'Authorization': `Bearer ${key}` } });
-
             if (response.ok) {
                 const data = await response.json();
                 const credits = (data.credits ?? 0).toLocaleString('vi-VN');
                 return { status: 'active', title: `Còn ${credits} credits`, message: `Key Stability AI hợp lệ. Số dư credits: ${credits}.`, advice: 'Bạn có thể sử dụng key này. Nạp thêm credits khi cần thiết.' };
             }
-
-            let errorData;
-            let errorMessage = `Lỗi từ Stability AI (Mã: ${response.status}).`; // Default error message
-
-            try {
-                errorData = await response.json();
-                // Prioritize specific error messages from the API response
-                if (errorData.message) {
-                    errorMessage = errorData.message;
-                } else if (errorData.detail) {
-                    errorMessage = errorData.detail;
-                } else {
-                    errorMessage = JSON.stringify(errorData); // Fallback to stringifying the whole error object
-                }
-            } catch (e) {
-                // If response is not JSON or parsing fails, use the default message.
-                console.error("Failed to parse Stability AI error response as JSON:", e);
-                // The errorMessage already contains the status, so no need to add more.
-            }
-
-            switch (response.status) {
-                case 401: // Unauthorized - Key is invalid or revoked
-                    return { status: 'invalid', title: 'Key không hợp lệ', message: 'API key không đúng hoặc đã bị thu hồi.', advice: 'Hãy tạo một key mới trên trang DreamStudio hoặc kiểm tra lại key của bạn.' };
-                case 429: // Too Many Requests - Rate limit exceeded
-                    return { status: 'limited', title: 'Vượt giới hạn truy vấn', message: errorMessage, advice: 'Bạn đã gửi quá nhiều yêu cầu. Vui lòng chờ một lát rồi thử lại.' };
-                case 403: // Forbidden - Could be quota exceeded or permission issue
-                    // Stability AI might return 403 for insufficient credits or billing issues.
-                    if (errorMessage.includes('insufficient_credits') || errorMessage.includes('billing_issue')) {
-                        return { status: 'limited', title: 'Hết hạn mức / Lỗi thanh toán', message: errorMessage, advice: 'Tài khoản của bạn có thể đã hết credits hoặc có vấn đề về thanh toán. Vui lòng kiểm tra trên trang DreamStudio.' };
-                    }
-                    return { status: 'invalid', title: `Lỗi truy cập ${response.status}`, message: errorMessage, advice: 'Key không có quyền truy cập hoặc có lỗi khác. Vui lòng kiểm tra lại.' };
-                default: // Generic error
-                    return { status: 'invalid', title: `Lỗi ${response.status}`, message: errorMessage, advice: 'Đã có lỗi xảy ra từ phía Stability AI. Vui lòng thử lại sau.' };
+            const errorMessage = await getErrorMessage(response);
+            switch(response.status) {
+                case 401: return { status: 'invalid', title: 'Key không hợp lệ', message: errorMessage, advice: 'Hãy tạo một key mới trên trang DreamStudio hoặc kiểm tra lại key của bạn.' };
+                case 429: return { status: 'limited', title: 'Vượt giới hạn truy vấn', message: errorMessage, advice: 'Bạn đã gửi quá nhiều yêu cầu. Vui lòng chờ một lát rồi thử lại.' };
+                default: return { status: 'invalid', title: `Lỗi ${response.status}`, message: errorMessage, advice: 'Đã có lỗi xảy ra từ phía Stability AI. Vui lòng thử lại sau.' };
             }
         }
 
         async function checkHuggingFaceKey(key) {
-            // [FIXED] Sử dụng endpoint 'whoami' đáng tin cậy hơn để xác thực token.
-            const response = await fetch('https://huggingface.co/api/whoami-v2', {
-                headers: { 'Authorization': `Bearer ${key}` }
-            });
-
+            const response = await fetch('https://huggingface.co/api/whoami-v2', { headers: { 'Authorization': `Bearer ${key}` } });
             if (response.ok) {
                 const data = await response.json();
-                const userName = data.name || 'Không xác định';
-                return {
-                    status: 'active',
-                    title: 'Hoạt động tốt',
-                    message: `Key hợp lệ, được liên kết với tài khoản: ${userName}.`,
-                    advice: 'Key có thể được sử dụng cho các API của Hugging Face. Hãy kiểm tra quyền (read/write) của key nếu gặp sự cố.'
-                };
+                return { status: 'active', title: 'Hoạt động tốt', message: `Key hợp lệ, thuộc về tài khoản: ${data.name || 'N/A'}.`, advice: 'Key có thể được sử dụng. Kiểm tra quyền (read/write) của key nếu gặp sự cố.' };
             }
-
-            const errorMessage = `API trả về mã lỗi ${response.status}.`;
+            const errorMessage = await getErrorMessage(response);
             switch (response.status) {
-                case 401:
-                    return {
-                        status: 'invalid',
-                        title: 'Key không hợp lệ',
-                        message: 'API key không đúng hoặc đã bị thu hồi. Vui lòng kiểm tra lại.',
-                        advice: 'Hãy tạo một key mới trên trang cài đặt của Hugging Face và đảm bảo bạn đã sao chép đúng.'
-                    };
-                default:
-                    return {
-                        status: 'invalid',
-                        title: `Lỗi ${response.status}`,
-                        message: errorMessage,
-                        advice: 'Đã có lỗi xảy ra từ phía máy chủ Hugging Face. Vui lòng thử lại sau hoặc kiểm tra trang trạng thái của họ.'
-                    };
+                case 401: return { status: 'invalid', title: 'Key không hợp lệ', message: errorMessage, advice: 'Hãy tạo một key mới trên trang cài đặt của Hugging Face và đảm bảo bạn đã sao chép đúng.' };
+                case 429: return { status: 'limited', title: 'Vượt giới hạn truy vấn', message: errorMessage, advice: 'Bạn đã gửi quá nhiều yêu cầu. Vui lòng chờ một lát rồi thử lại.' };
+                default: return { status: 'invalid', title: `Lỗi ${response.status}`, message: errorMessage, advice: 'Đã có lỗi xảy ra từ phía Hugging Face. Vui lòng thử lại sau.' };
             }
         }
         
@@ -640,12 +593,12 @@
             if (response.ok) {
                 return { status: 'active', title: 'Hoạt động tốt', message: 'Key OpenAI hợp lệ và có quyền truy cập models.', advice: 'Bạn có thể sử dụng key này. Theo dõi hạn mức và thanh toán trên trang quản trị của OpenAI.' };
             }
-            const errorData = await response.json();
-            const errorMessage = errorData.error?.message || 'Không có thông tin lỗi.';
-            if (response.status === 401) {
-                return { status: 'invalid', title: 'Key không hợp lệ hoặc hết hạn', message: errorMessage, advice: 'Kiểm tra lại key, hoặc tạo key mới. Có thể key của bạn đã bị thu hồi hoặc hết hạn tín dụng.' };
+            const errorMessage = await getErrorMessage(response);
+            switch (response.status) {
+                case 401: return { status: 'invalid', title: 'Key không hợp lệ/hết hạn', message: errorMessage, advice: 'Kiểm tra lại key, hoặc tạo key mới. Có thể key của bạn đã bị thu hồi hoặc hết hạn tín dụng.' };
+                case 429: return { status: 'limited', title: 'Vượt giới hạn truy vấn', message: errorMessage, advice: 'Bạn đã đạt đến giới hạn yêu cầu hoặc hạn mức của tài khoản. Vui lòng kiểm tra trang quản trị OpenAI.' };
+                default: return { status: 'invalid', title: `Lỗi ${response.status}`, message: errorMessage, advice: 'Đã có lỗi xảy ra. Vui lòng kiểm tra trang trạng thái của OpenAI.' };
             }
-            return { status: 'invalid', title: `Lỗi ${response.status}`, message: errorMessage, advice: 'Đã có lỗi xảy ra. Vui lòng kiểm tra trang trạng thái của OpenAI.' };
         }
 
         // --- Logic nút Kiểm tra tất cả ---
