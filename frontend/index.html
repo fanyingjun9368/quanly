@@ -56,6 +56,17 @@
         .api-group-table tbody tr:hover {
             background-color: #eff6ff; /* blue-50 */
         }
+        /* Drag and Drop styles */
+        .key-row.dragging {
+            opacity: 0.5;
+            border: 2px dashed #3b82f6; /* blue-500 */
+        }
+        .key-row.drag-over-top {
+            border-top: 2px solid #3b82f6;
+        }
+        .key-row.drag-over-bottom {
+            border-bottom: 2px solid #3b82f6;
+        }
     </style>
 </head>
 <body class="bg-[#fffbbe] text-gray-800">
@@ -114,7 +125,7 @@
 
     <!-- Template cho hàng API key trong bảng -->
     <template id="key-row-template">
-        <tr class="key-row" data-id="" data-value="" data-type="" data-favorite="" data-order="">
+        <tr class="key-row" data-id="" data-value="" data-type="" data-favorite="" data-order="" draggable="true">
             <td class="py-3 px-2 border-b border-gray-200">
                 <div class="flex items-center gap-2">
                     <button title="Đánh dấu yêu thích" class="favorite-btn p-1 text-gray-400 hover:text-yellow-400 rounded-lg transition-colors">
@@ -143,9 +154,7 @@
             </td>
             <td class="py-3 px-2 border-b border-gray-200 text-right">
                 <div class="flex items-center justify-end space-x-1">
-                    <!-- Thêm nút di chuyển lên/xuống -->
-                    <button class="move-up-btn p-1 text-gray-400 hover:text-indigo-600 rounded-lg transition-colors" title="Di chuyển lên"><i class="fas fa-arrow-up"></i></button>
-                    <button class="move-down-btn p-1 text-gray-400 hover:text-indigo-600 rounded-lg transition-colors" title="Di chuyển xuống"><i class="fas fa-arrow-down"></i></button>
+                    <!-- Nút di chuyển lên/xuống đã bị loại bỏ -->
                     <button class="check-btn btn-gradient text-white text-xs font-bold py-1 px-2 rounded-lg transition duration-300 flex items-center gap-1"><i class="fas fa-sync-alt"></i><span class="btn-text">Kiểm tra</span><div class="loader hidden"></div></button>
                     <button class="delete-btn bg-gray-200 hover:bg-red-200 text-gray-700 hover:text-red-800 text-xs font-bold py-1 px-2 rounded-lg transition"><i class="fas fa-trash"></i></button>
                 </div>
@@ -201,6 +210,9 @@
         let keyIdToDelete = null;
         let allLoadedKeys = []; // Biến toàn cục để lưu trữ tất cả các key đã tải
 
+        // Biến toàn cục cho kéo thả
+        let draggedRow = null;
+
         const API_PROVIDERS = {
             'google-ai': { name: 'Google AI (Gemini)', regex: /^AIzaSy[A-Za-z0-9_-]{33}$/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-blue-500"><path d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.18,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.18,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.18,22C17.6,22 21.54,18.33 21.54,12.81C21.54,11.76 21.45,11.44 21.35,11.1Z"/></svg>`, gradient: 'from-blue-500 to-green-500' },
             'hugging-face': { name: 'Hugging Face', regex: /^hf_[A-Za-z0-9]{30,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-yellow-500"><path d="M20.25 14.183C20.25 13.202 19.431 12.383 18.45 12.383C17.469 12.383 16.65 13.202 16.65 14.183C16.65 15.164 17.469 15.983 18.45 15.983C19.431 15.983 20.25 15.164 20.25 14.183ZM15.15 14.183C15.15 13.202 14.331 12.383 13.35 12.383C12.369 12.383 11.55 13.202 11.55 14.183C11.55 15.164 12.369 15.983 13.35 15.983C14.331 15.983 15.15 15.164 15.15 14.183ZM12 2C17.523 2 22 6.477 22 12C22 17.523 17.523 22 12 22C6.477 22 2 17.523 2 12C2 6.477 6.477 2 12 2ZM12 4C7.582 4 4 7.582 4 12C4 16.418 7.582 20 12 20C16.418 20 20 16.418 20 12C20 7.582 16.418 4 12 4ZM8.85 14.183C8.85 13.202 8.031 12.383 7.05 12.383C6.069 12.383 5.25 13.202 5.25 14.183C5.25 15.164 6.069 15.983 7.05 15.983C8.031 15.983 8.85 15.164 8.85 14.183Z"/></svg>`, gradient: 'from-yellow-500 to-orange-500' },
@@ -254,17 +266,9 @@
             }
         }
 
-        window.onload = function () {
-            if (GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID' || BACKEND_URL === 'YOUR_RENDER_BACKEND_URL') {
-                document.getElementById('login-view').innerHTML = `<h2 class="text-2xl text-red-500 font-bold">Lỗi Cấu Hình Frontend</h2><p class="text-gray-600 mt-2">Vui lòng điền GOOGLE_CLIENT_ID và BACKEND_URL trong tệp HTML.</p>`;
-                return;
-            }
-            google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredentialResponse });
-            google.accounts.id.renderButton(document.getElementById("gsi-button"), { theme: "outline", size: "large", text: "signin_with", shape: "rectangular" });
-        };
-
-        function handleCredentialResponse(response) {
-            idToken = response.credential;
+        // Hàm khởi tạo ứng dụng sau khi xác thực thành công
+        function initializeAuthenticatedApp(token) {
+            idToken = token;
             const userProfile = decodeJwtPayload(idToken);
             if (!userProfile) {
                 showToast("Không thể giải mã thông tin người dùng.");
@@ -278,12 +282,39 @@
             loadKeys();
         }
 
+        window.onload = function () {
+            if (GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID' || BACKEND_URL === 'YOUR_RENDER_BACKEND_URL') {
+                document.getElementById('login-view').innerHTML = `<h2 class="text-2xl text-red-500 font-bold">Lỗi Cấu Hình Frontend</h2><p class="text-gray-600 mt-2">Vui lòng điền GOOGLE_CLIENT_ID và BACKEND_URL trong tệp HTML.</p>`;
+                return;
+            }
+
+            // Kiểm tra token đã lưu trong localStorage
+            const storedIdToken = localStorage.getItem('idToken');
+            if (storedIdToken) {
+                initializeAuthenticatedApp(storedIdToken);
+            } else {
+                // Nếu không có token, khởi tạo Google Sign-In button
+                google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredentialResponse, auto_select: true }); // Thêm auto_select
+                google.accounts.id.renderButton(document.getElementById("gsi-button"), { theme: "outline", size: "large", text: "signin_with", shape: "rectangular" });
+            }
+        };
+
+        function handleCredentialResponse(response) {
+            // Lưu token vào localStorage sau khi đăng nhập thành công
+            localStorage.setItem('idToken', response.credential);
+            initializeAuthenticatedApp(response.credential);
+        }
+
         document.getElementById('sign-out-btn').addEventListener('click', () => {
             idToken = null;
-            google.accounts.id.disableAutoSelect();
+            localStorage.removeItem('idToken'); // Xóa token khi đăng xuất
+            google.accounts.id.disableAutoSelect(); // Tắt tự động chọn tài khoản
             document.getElementById('login-view').classList.remove('hidden');
             document.getElementById('app-header').classList.add('hidden');
             document.getElementById('app-content').classList.add('hidden');
+            // Render lại nút đăng nhập để người dùng có thể đăng nhập lại
+            google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredentialResponse, auto_select: true });
+            google.accounts.id.renderButton(document.getElementById("gsi-button"), { theme: "outline", size: "large", text: "signin_with", shape: "rectangular" });
         });
 
         // --- Logic CRUD & Hiển thị ---
@@ -506,8 +537,13 @@
             if (e.target.closest('.favorite-btn')) {
                 const isCurrentlyFavorite = row.dataset.favorite === 'true';
                 try {
-                    await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify({ favorite: !isCurrentlyFavorite }) });
-                    loadKeys(); // Tải lại để phản ánh thay đổi trạng thái yêu thích và sắp xếp lại
+                    // Cập nhật key trong allLoadedKeys trước khi gửi lên backend
+                    const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
+                    if (keyToUpdate) {
+                        keyToUpdate.favorite = !isCurrentlyFavorite;
+                        await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify({ favorite: keyToUpdate.favorite, notes: keyToUpdate.notes, order: keyToUpdate.order }) });
+                        loadKeys(); // Tải lại để phản ánh thay đổi trạng thái yêu thích và sắp xếp lại
+                    }
                 } catch (error) {
                     showToast(`Lỗi cập nhật yêu thích: ${error.message}`);
                 }
@@ -518,11 +554,8 @@
             } else if (e.target.closest('.check-btn')) {
                 const result = await checkKeyStatus(row, row.dataset.value, row.dataset.type);
                 showStatusModal(result);
-            } else if (e.target.closest('.move-up-btn')) {
-                moveKey(row, 'up');
-            } else if (e.target.closest('.move-down-btn')) {
-                moveKey(row, 'down');
             }
+            // Nút di chuyển lên/xuống đã bị loại bỏ, logic này cũng bị loại bỏ
         });
 
         // Event listener cho nút "Kiểm tra tất cả" của nhóm
@@ -544,7 +577,6 @@
             setButtonLoading(checkGroupBtn, false);
             showToast(`Đã hoàn tất kiểm tra tất cả các key của nhóm ${API_PROVIDERS[groupType]?.name || groupType}.`);
         });
-
 
         // --- Logic cho Modal ---
         function showDeleteConfirmModal(keyId) {
@@ -614,9 +646,16 @@
             // Logic lưu ghi chú
             if (e.target.closest('.card-notes')) {
                 const notesTextarea = e.target.closest('.card-notes');
+                const keyId = notesTextarea.dataset.keyId;
+                const newNotes = notesTextarea.value;
                 try {
-                    await apiFetch(`/api/keys/${notesTextarea.dataset.keyId}`, { method: 'PUT', body: JSON.stringify({ notes: notesTextarea.value }) });
-                    showToast('Đã lưu ghi chú.');
+                    // Cập nhật key trong allLoadedKeys trước khi gửi lên backend
+                    const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
+                    if (keyToUpdate) {
+                        keyToUpdate.notes = newNotes;
+                        await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify({ notes: newNotes, favorite: keyToUpdate.favorite, order: keyToUpdate.order }) });
+                        showToast('Đã lưu ghi chú.');
+                    }
                 } catch (error) {
                     showToast(`Lỗi lưu ghi chú: ${error.message}`);
                 }
@@ -630,9 +669,14 @@
                 // Chỉ gửi yêu cầu nếu tên thực sự thay đổi
                 if (newName && newName !== row.dataset.originalName) {
                     try {
-                        await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify({ name: newName }) });
-                        row.dataset.originalName = newName; // Cập nhật tên gốc để so sánh trong tương lai
-                        showToast('Đã cập nhật tên gợi nhớ.');
+                        // Cập nhật key trong allLoadedKeys trước khi gửi lên backend
+                        const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
+                        if (keyToUpdate) {
+                            keyToUpdate.name = newName;
+                            await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify({ name: newName, notes: keyToUpdate.notes, favorite: keyToUpdate.favorite, order: keyToUpdate.order }) });
+                            row.dataset.originalName = newName; // Cập nhật tên gốc để so sánh trong tương lai
+                            showToast('Đã cập nhật tên gợi nhớ.');
+                        }
                     } catch (error) {
                         showToast(`Lỗi cập nhật tên: ${error.message}`);
                         // Hoàn nguyên về tên gốc nếu lưu thất bại
@@ -768,53 +812,145 @@
             }
         }
 
-        // --- Logic di chuyển key (Move Up/Down) ---
-        async function moveKey(currentRow, direction) {
-            const groupDiv = currentRow.closest('.bg-white');
-            const tbody = groupDiv.querySelector('tbody');
-            const rowsInGroup = Array.from(tbody.querySelectorAll('.key-row'));
-            const currentIndex = rowsInGroup.indexOf(currentRow);
+        // --- Logic kéo thả (Drag and Drop) ---
+        keyGroupsContainer.addEventListener('dragstart', (e) => {
+            const row = e.target.closest('.key-row');
+            if (!row) return;
+            draggedRow = row;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', row.dataset.id);
+            setTimeout(() => {
+                row.classList.add('dragging');
+            }, 0); // Add class after a brief delay to avoid flickering
+        });
 
-            let targetIndex = -1;
-            if (direction === 'up' && currentIndex > 0) {
-                targetIndex = currentIndex - 1;
-            } else if (direction === 'down' && currentIndex < rowsInGroup.length - 1) {
-                targetIndex = currentIndex + 1;
-            }
+        keyGroupsContainer.addEventListener('dragover', (e) => {
+            e.preventDefault(); // Allow drop
+            const targetRow = e.target.closest('.key-row');
+            if (targetRow && draggedRow && targetRow !== draggedRow && targetRow.dataset.type === draggedRow.dataset.type) {
+                const rect = targetRow.getBoundingClientRect();
+                const offsetY = e.clientY - rect.top;
+                
+                // Remove existing drag-over classes
+                targetRow.classList.remove('drag-over-top', 'drag-over-bottom');
 
-            if (targetIndex !== -1) {
-                const targetRow = rowsInGroup[targetIndex];
-
-                const currentKeyId = currentRow.dataset.id;
-                const targetKeyId = targetRow.dataset.id;
-
-                // Tìm đối tượng key thực tế từ mảng allLoadedKeys
-                const key1 = allLoadedKeys.find(k => k.id === currentKeyId);
-                const key2 = allLoadedKeys.find(k => k.id === targetKeyId);
-
-                if (key1 && key2) {
-                    // Hoán đổi giá trị order
-                    const tempOrder = key1.order;
-                    key1.order = key2.order;
-                    key2.order = tempOrder;
-
-                    // Gửi cập nhật lên backend, bao gồm notes và favorite
-                    try {
-                        await apiFetch(`/api/keys/${key1.id}`, { method: 'PUT', body: JSON.stringify({ order: key1.order, notes: key1.notes, favorite: key1.favorite }) });
-                        await apiFetch(`/api/keys/${key2.id}`, { method: 'PUT', body: JSON.stringify({ order: key2.order, notes: key2.notes, favorite: key2.favorite }) });
-                        
-                        showToast('Đã sắp xếp lại API key.');
-                        loadKeys(); // Tải lại và render để đảm bảo trạng thái nhất quán
-                    } catch (error) {
-                        showToast(`Lỗi sắp xếp key: ${error.message}`);
-                        loadKeys(); // Hoàn nguyên về trạng thái ban đầu nếu có lỗi
-                    }
+                if (offsetY < rect.height / 2) {
+                    targetRow.classList.add('drag-over-top');
                 } else {
-                    showToast('Lỗi: Không tìm thấy key để sắp xếp.');
-                    loadKeys(); // Hoàn nguyên về trạng thái ban đầu nếu không tìm thấy key
+                    targetRow.classList.add('drag-over-bottom');
                 }
             }
-        }
+        });
+
+        keyGroupsContainer.addEventListener('dragleave', (e) => {
+            const targetRow = e.target.closest('.key-row');
+            if (targetRow) {
+                targetRow.classList.remove('drag-over-top', 'drag-over-bottom');
+            }
+        });
+
+        keyGroupsContainer.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            const targetRow = e.target.closest('.key-row');
+
+            if (draggedRow && targetRow && targetRow !== draggedRow && targetRow.dataset.type === draggedRow.dataset.type) {
+                const draggedId = draggedRow.dataset.id;
+                const targetId = targetRow.dataset.id;
+                const tbody = targetRow.closest('tbody');
+                const rowsInGroup = Array.from(tbody.querySelectorAll('.key-row'));
+
+                const draggedIndex = rowsInGroup.indexOf(draggedRow);
+                const targetIndex = rowsInGroup.indexOf(targetRow);
+
+                // Determine new position based on drop location
+                const rect = targetRow.getBoundingClientRect();
+                const offsetY = e.clientY - rect.top;
+                let newPosition = targetIndex;
+
+                if (offsetY > rect.height / 2) { // Dropped below the middle of the target row
+                    if (draggedIndex < targetIndex) {
+                        newPosition = targetIndex;
+                    } else {
+                        newPosition = targetIndex + 1;
+                    }
+                } else { // Dropped above the middle of the target row
+                    if (draggedIndex < targetIndex) {
+                        newPosition = targetIndex -1;
+                    } else {
+                        newPosition = targetIndex;
+                    }
+                }
+                
+                // Ensure newPosition is within bounds
+                newPosition = Math.max(0, Math.min(rowsInGroup.length - 1, newPosition));
+
+                // Remove the dragged row from its current position in the DOM
+                tbody.removeChild(draggedRow);
+
+                // Insert the dragged row at the new position
+                if (newPosition === rowsInGroup.length -1 && offsetY > rect.height / 2) {
+                    tbody.appendChild(draggedRow);
+                } else if (rowsInGroup[newPosition]) {
+                    tbody.insertBefore(draggedRow, rowsInGroup[newPosition]);
+                } else {
+                    tbody.appendChild(draggedRow); // Fallback if position calculation is off
+                }
+
+                // Update 'order' in allLoadedKeys and persist to backend
+                const draggedKeyInArray = allLoadedKeys.find(k => k.id === draggedId);
+                const targetKeyInArray = allLoadedKeys.find(k => k.id === targetId);
+
+                if (draggedKeyInArray && targetKeyInArray) {
+                    // Update order values based on new visual order
+                    const updatedOrders = [];
+                    const tempKeys = [...allLoadedKeys]; // Create a mutable copy
+                    
+                    // Remove dragged key from its original position in tempKeys
+                    const oldDraggedIndex = tempKeys.findIndex(k => k.id === draggedId);
+                    const [removedKey] = tempKeys.splice(oldDraggedIndex, 1);
+
+                    // Insert removedKey at its new logical position within its type group
+                    const keysOfType = tempKeys.filter(k => k.type === draggedKeyInArray.type);
+                    const otherKeys = tempKeys.filter(k => k.type !== draggedKeyInArray.type);
+
+                    // Find the new index within its type group
+                    const targetRowInDOM = tbody.querySelector(`[data-id="${targetId}"]`);
+                    const newIndexInDOM = Array.from(tbody.children).indexOf(draggedRow); // Get the actual new index in DOM
+
+                    // Reconstruct the `allLoadedKeys` based on the new DOM order
+                    const newOrderedKeysInGroup = Array.from(tbody.children).map(row => allLoadedKeys.find(k => k.id === row.dataset.id));
+                    
+                    // Assign new order values based on the new sequence
+                    newOrderedKeysInGroup.forEach((key, index) => {
+                        if (key) {
+                            key.order = index; // Simple sequential order
+                        }
+                    });
+
+                    // Persist changes for all keys in the affected group
+                    for (const key of newOrderedKeysInGroup) {
+                        if (key) {
+                            await apiFetch(`/api/keys/${key.id}`, { method: 'PUT', body: JSON.stringify({ order: key.order, notes: key.notes, favorite: key.favorite }) });
+                        }
+                    }
+                    showToast('Đã sắp xếp lại API key.');
+                    loadKeys(); // Re-render to ensure consistency
+                }
+            }
+            // Clean up drag-over classes from all rows
+            document.querySelectorAll('.key-row').forEach(row => {
+                row.classList.remove('drag-over-top', 'drag-over-bottom');
+            });
+        });
+
+        keyGroupsContainer.addEventListener('dragend', (e) => {
+            draggedRow.classList.remove('dragging');
+            draggedRow = null;
+            // Clean up any lingering drag-over classes
+            document.querySelectorAll('.key-row').forEach(row => {
+                row.classList.remove('drag-over-top', 'drag-over-bottom');
+            });
+        });
 
         // --- Logic nút Kiểm tra tất cả (tổng thể) ---
         checkAllBtn.addEventListener('click', async () => {
