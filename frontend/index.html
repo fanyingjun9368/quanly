@@ -520,9 +520,23 @@
                 document.querySelectorAll('.move-up-btn, .move-down-btn').forEach(btn => btn.disabled = true);
 
                 try {
-                    // Cập nhật cả hai key lên backend
-                    const update1 = apiFetch(`/api/keys/${keyToMove.id}`, { method: 'PUT', body: JSON.stringify({ order: keyToMove.order }) });
-                    const update2 = apiFetch(`/api/keys/${adjacentKey.id}`, { method: 'PUT', body: JSON.stringify({ order: adjacentKey.order }) });
+                    // Cập nhật cả hai key lên backend, bao gồm các trường bắt buộc
+                    const update1 = apiFetch(`/api/keys/${keyToMove.id}`, { 
+                        method: 'PUT', 
+                        body: JSON.stringify({ 
+                            order: keyToMove.order,
+                            notes: keyToMove.notes,
+                            favorite: keyToMove.favorite
+                        }) 
+                    });
+                    const update2 = apiFetch(`/api/keys/${adjacentKey.id}`, { 
+                        method: 'PUT', 
+                        body: JSON.stringify({ 
+                            order: adjacentKey.order,
+                            notes: adjacentKey.notes,
+                            favorite: adjacentKey.favorite
+                        }) 
+                    });
                     
                     await Promise.all([update1, update2]);
                     showToast('Đã cập nhật thứ tự.');
