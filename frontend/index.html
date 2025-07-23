@@ -39,6 +39,23 @@
         .modal-overlay {
             transition: opacity 0.3s ease;
         }
+        /* Custom table styles */
+        .api-group-table th, .api-group-table td {
+            padding: 0.75rem;
+            text-align: left;
+            vertical-align: top;
+        }
+        .api-group-table thead th {
+            background-color: #f3f4f6; /* gray-100 */
+            font-weight: 600;
+            color: #374151; /* gray-700 */
+        }
+        .api-group-table tbody tr:nth-child(even) {
+            background-color: #f9fafb; /* gray-50 */
+        }
+        .api-group-table tbody tr:hover {
+            background-color: #eff6ff; /* blue-50 */
+        }
     </style>
 </head>
 <body class="bg-[#fffbbe] text-gray-800">
@@ -79,7 +96,7 @@
                 </button>
             </div>
             <div>
-                 <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
                     <h2 class="text-2xl font-semibold text-gray-900 mb-4 sm:mb-0">Danh sách API Keys</h2>
                     <button id="check-all-btn" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2 disabled:bg-gray-400">
                         <i class="fas fa-tasks"></i>
@@ -87,42 +104,49 @@
                         <div id="check-all-loader" class="loader hidden"></div>
                     </button>
                 </div>
-                <div id="key-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                <!-- Vùng hiển thị các nhóm API key -->
+                <div id="key-groups-container" class="space-y-8">
+                    <!-- Các nhóm API key sẽ được render ở đây -->
+                </div>
             </div>
         </main>
     </div>
 
-    <!-- Template cho thẻ API key -->
-    <template id="key-card-template">
-        <div class="key-card bg-white p-5 rounded-xl shadow-md flex flex-col">
-            <div class="flex justify-between items-start mb-3">
-                <h3 class="card-name text-lg font-bold text-gray-900 break-all"></h3>
-                <div class="flex items-center">
-                    <button title="Đánh dấu yêu thích" class="favorite-btn p-2 text-gray-400 hover:text-yellow-400 rounded-lg transition-colors">
+    <!-- Template cho hàng API key trong bảng -->
+    <template id="key-row-template">
+        <tr class="key-row" data-id="" data-value="" data-type="" data-favorite="">
+            <td class="py-3 px-2 border-b border-gray-200">
+                <div class="flex items-center gap-2">
+                    <button title="Đánh dấu yêu thích" class="favorite-btn p-1 text-gray-400 hover:text-yellow-400 rounded-lg transition-colors">
                         <i class="far fa-star"></i>
                     </button>
-                    <div class="card-logo w-8 h-8 flex-shrink-0"></div>
+                    <span class="card-name text-sm font-medium text-gray-900 break-all"></span>
                 </div>
-            </div>
-            <div class="flex items-center gap-2">
-                <p class="card-masked-key font-mono text-sm text-gray-500 break-all flex-grow"></p>
-                <button title="Sao chép key" class="copy-btn p-2 text-gray-400 hover:text-indigo-600 rounded-lg transition-colors">
-                    <i class="far fa-copy"></i>
-                </button>
-            </div>
-            <div class="flex items-center gap-2 mt-4">
-                <div class="status-dot"></div>
-                <p class="card-status-text text-sm text-gray-600 flex-grow">Chưa kiểm tra</p>
-            </div>
-            <div class="mt-4 flex-grow">
-                <label class="block text-xs font-medium text-gray-500 mb-1">Ghi chú</label>
-                <textarea class="card-notes w-full bg-gray-50 p-2 rounded-md text-sm text-gray-800 resize-none border border-gray-200 focus:ring-1 focus:ring-indigo-500" rows="2" placeholder="Thêm ghi chú..."></textarea>
-            </div>
-            <div class="flex items-center justify-end space-x-2 mt-4">
-                <button class="check-btn btn-gradient text-white text-xs font-bold py-2 px-3 rounded-lg transition duration-300 flex items-center gap-1"><i class="fas fa-sync-alt"></i><span class="btn-text">Kiểm tra</span><div class="loader hidden"></div></button>
-                <button class="delete-btn bg-gray-200 hover:bg-red-200 text-gray-700 hover:text-red-800 text-xs font-bold py-2 px-3 rounded-lg transition"><i class="fas fa-trash"></i></button>
-            </div>
-        </div>
+            </td>
+            <td class="py-3 px-2 border-b border-gray-200">
+                <div class="flex items-center gap-2">
+                    <p class="card-masked-key font-mono text-xs text-gray-500 break-all flex-grow"></p>
+                    <button title="Sao chép key" class="copy-btn p-1 text-gray-400 hover:text-indigo-600 rounded-lg transition-colors">
+                        <i class="far fa-copy"></i>
+                    </button>
+                </div>
+            </td>
+            <td class="py-3 px-2 border-b border-gray-200">
+                <div class="flex items-center gap-1">
+                    <div class="status-dot flex-shrink-0"></div>
+                    <p class="card-status-text text-xs text-gray-600 flex-grow">Chưa kiểm tra</p>
+                </div>
+            </td>
+            <td class="py-3 px-2 border-b border-gray-200">
+                <textarea class="card-notes w-full bg-gray-50 p-1 rounded-md text-xs text-gray-800 resize-none border border-gray-200 focus:ring-1 focus:ring-indigo-500" rows="1" placeholder="Thêm ghi chú..."></textarea>
+            </td>
+            <td class="py-3 px-2 border-b border-gray-200 text-right">
+                <div class="flex items-center justify-end space-x-1">
+                    <button class="check-btn btn-gradient text-white text-xs font-bold py-1 px-2 rounded-lg transition duration-300 flex items-center gap-1"><i class="fas fa-sync-alt"></i><span class="btn-text">Kiểm tra</span><div class="loader hidden"></div></button>
+                    <button class="delete-btn bg-gray-200 hover:bg-red-200 text-gray-700 hover:text-red-800 text-xs font-bold py-1 px-2 rounded-lg transition"><i class="fas fa-trash"></i></button>
+                </div>
+            </td>
+        </tr>
     </template>
 
     <!-- Toast thông báo nhanh -->
@@ -173,10 +197,10 @@
         let keyIdToDelete = null;
 
         const API_PROVIDERS = {
-            'google-ai': { name: 'Google AI', regex: /^AIzaSy[A-Za-z0-9_-]{33}$/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full text-blue-500"><path d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.18,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.18,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.18,22C17.6,22 21.54,18.33 21.54,12.81C21.54,11.76 21.45,11.44 21.35,11.1Z"/></svg>`, gradient: 'from-blue-500 to-green-500' },
-            'hugging-face': { name: 'Hugging Face', regex: /^hf_[A-Za-z0-9]{30,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full text-yellow-500"><path d="M20.25 14.183C20.25 13.202 19.431 12.383 18.45 12.383C17.469 12.383 16.65 13.202 16.65 14.183C16.65 15.164 17.469 15.983 18.45 15.983C19.431 15.983 20.25 15.164 20.25 14.183ZM15.15 14.183C15.15 13.202 14.331 12.383 13.35 12.383C12.369 12.383 11.55 13.202 11.55 14.183C11.55 15.164 12.369 15.983 13.35 15.983C14.331 15.983 15.15 15.164 15.15 14.183ZM12 2C17.523 2 22 6.477 22 12C22 17.523 17.523 22 12 22C6.477 22 2 17.523 2 12C2 6.477 6.477 2 12 2ZM12 4C7.582 4 4 7.582 4 12C4 16.418 7.582 20 12 20C16.418 20 20 16.418 20 12C20 7.582 16.418 4 12 4ZM8.85 14.183C8.85 13.202 8.031 12.383 7.05 12.383C6.069 12.383 5.25 13.202 5.25 14.183C5.25 15.164 6.069 15.983 7.05 15.983C8.031 15.983 8.85 15.164 8.85 14.183Z"/></svg>`, gradient: 'from-yellow-500 to-orange-500' },
-            'stability-ai': { name: 'Stability AI', regex: /^sk-[A-Za-z0-9]{40,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-full h-full text-purple-500"><path d="M12 2L9.429 9.429 2 12l7.429 2.571L12 22l2.571-7.429L22 12l-7.429-2.571z"/></svg>`, gradient: 'from-purple-500 to-pink-500' },
-            'openai': { name: 'OpenAI', regex: /^sk-[A-Za-z0-9]{20,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-full h-full text-teal-500"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>`, gradient: 'from-teal-500 to-cyan-500' },
+            'google-ai': { name: 'Google AI (Gemini)', regex: /^AIzaSy[A-Za-z0-9_-]{33}$/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-blue-500"><path d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.18,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.18,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.18,22C17.6,22 21.54,18.33 21.54,12.81C21.54,11.76 21.45,11.44 21.35,11.1Z"/></svg>`, gradient: 'from-blue-500 to-green-500' },
+            'hugging-face': { name: 'Hugging Face', regex: /^hf_[A-Za-z0-9]{30,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-yellow-500"><path d="M20.25 14.183C20.25 13.202 19.431 12.383 18.45 12.383C17.469 12.383 16.65 13.202 16.65 14.183C16.65 15.164 17.469 15.983 18.45 15.983C19.431 15.983 20.25 15.164 20.25 14.183ZM15.15 14.183C15.15 13.202 14.331 12.383 13.35 12.383C12.369 12.383 11.55 13.202 11.55 14.183C11.55 15.164 12.369 15.983 13.35 15.983C14.331 15.983 15.15 15.164 15.15 14.183ZM12 2C17.523 2 22 6.477 22 12C22 17.523 17.523 22 12 22C6.477 22 2 17.523 2 12C2 6.477 6.477 2 12 2ZM12 4C7.582 4 4 7.582 4 12C4 16.418 7.582 20 12 20C16.418 20 20 16.418 20 12C20 7.582 16.418 4 12 4ZM8.85 14.183C8.85 13.202 8.031 12.383 7.05 12.383C6.069 12.383 5.25 13.202 5.25 14.183C5.25 15.164 6.069 15.983 7.05 15.983C8.031 15.983 8.85 15.164 8.85 14.183Z"/></svg>`, gradient: 'from-yellow-500 to-orange-500' },
+            'stability-ai': { name: 'Stability AI', regex: /^sk-[A-Za-z0-9]{40,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-purple-500"><path d="M12 2L9.429 9.429 2 12l7.429 2.571L12 22l2.571-7.429L22 12l-7.429-2.571z"/></svg>`, gradient: 'from-purple-500 to-pink-500' },
+            'openai': { name: 'OpenAI', regex: /^sk-[A-Za-z0-9]{20,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-teal-500"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>`, gradient: 'from-teal-500 to-cyan-500' },
         };
 
         // --- Logic Giao tiếp Backend ---
@@ -261,9 +285,9 @@
         const apiKeyInput = document.getElementById('api-key-input');
         const keyNameInput = document.getElementById('key-name-input');
         const addKeyBtn = document.getElementById('add-key-btn');
-        const keyListDiv = document.getElementById('key-list');
+        const keyGroupsContainer = document.getElementById('key-groups-container'); // Changed from keyListDiv
         const detectedApiLogo = document.getElementById('detected-api-logo');
-        const keyCardTemplate = document.getElementById('key-card-template');
+        const keyRowTemplate = document.getElementById('key-row-template'); // Changed from keyCardTemplate
         const checkAllBtn = document.getElementById('check-all-btn');
         
         const deleteConfirmModal = document.getElementById('delete-confirm-modal');
@@ -283,43 +307,100 @@
         }
 
         function renderKeys(keys) {
-            keyListDiv.innerHTML = '';
+            keyGroupsContainer.innerHTML = ''; // Clear previous content
+
             if (!keys || keys.length === 0) {
-                keyListDiv.innerHTML = `<p class="text-gray-500 col-span-full text-center">Bạn chưa có API key nào.</p>`;
+                keyGroupsContainer.innerHTML = `<p class="text-gray-500 col-span-full text-center">Bạn chưa có API key nào.</p>`;
                 return;
             }
-            keys.sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) || new Date(b.created_at) - new Date(a.created_at))
-            .forEach(key => {
-                const card = keyCardTemplate.content.cloneNode(true).firstElementChild;
-                const provider = API_PROVIDERS[key.type] || {};
-                card.dataset.id = key.id;
-                card.dataset.value = key.value;
-                card.dataset.type = key.type;
-                card.dataset.favorite = String(key.favorite);
-                card.querySelector('.card-name').textContent = key.name;
-                card.querySelector('.card-logo').innerHTML = provider.logo || '';
-                card.querySelector('.card-masked-key').textContent = `${key.value.substring(0, 4)}...${key.value.substring(key.value.length - 4)}`;
-                const notesEl = card.querySelector('.card-notes');
-                notesEl.value = key.notes || '';
-                notesEl.dataset.keyId = key.id;
-                const checkBtn = card.querySelector('.check-btn');
-                const favoriteBtn = card.querySelector('.favorite-btn');
-                
-                if (key.favorite) {
-                    favoriteBtn.classList.add('is-favorite');
-                }
-                
-                const gradientString = provider.gradient || 'from-gray-500 to-gray-600';
-                checkBtn.classList.add('bg-gradient-to-r', ...gradientString.split(' '));
 
-                updateCardStatus(card, 'unknown', 'Chưa kiểm tra');
-                keyListDiv.appendChild(card);
+            // Group keys by type
+            const groupedKeys = keys.reduce((acc, key) => {
+                const type = key.type || 'unknown';
+                if (!acc[type]) {
+                    acc[type] = [];
+                }
+                acc[type].push(key);
+                return acc;
+            }, {});
+
+            // Sort provider types for consistent display (e.g., Google AI, Hugging Face, Stability AI, OpenAI)
+            const sortedProviderTypes = Object.keys(API_PROVIDERS).filter(type => groupedKeys[type]);
+            const unknownKeys = groupedKeys['unknown'];
+            if (unknownKeys) {
+                sortedProviderTypes.push('unknown'); // Add unknown keys at the end
+            }
+
+            sortedProviderTypes.forEach(type => {
+                const provider = API_PROVIDERS[type] || { name: 'Loại không xác định', logo: '' };
+                const keysInGroup = groupedKeys[type].sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) || new Date(b.created_at) - new Date(a.created_at));
+
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'bg-white p-6 rounded-xl shadow-lg';
+                groupDiv.dataset.type = type; // Add data-type to the group div
+
+                groupDiv.innerHTML = `
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                            ${provider.logo}
+                            <span>${provider.name} Keys</span>
+                        </h3>
+                        <button class="check-group-btn w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2 disabled:bg-gray-400">
+                            <i class="fas fa-sync-alt"></i>
+                            <span class="btn-text">Kiểm tra tất cả ${provider.name}</span>
+                            <div class="loader hidden"></div>
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 api-group-table">
+                            <thead>
+                                <tr>
+                                    <th class="py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Tên gợi nhớ</th>
+                                    <th class="py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">API Key</th>
+                                    <th class="py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Trạng thái</th>
+                                    <th class="py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Ghi chú</th>
+                                    <th class="py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12 text-right">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Key rows will be appended here -->
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                
+                const tbody = groupDiv.querySelector('tbody');
+                keysInGroup.forEach(key => {
+                    const row = keyRowTemplate.content.cloneNode(true).firstElementChild;
+                    row.dataset.id = key.id;
+                    row.dataset.value = key.value;
+                    row.dataset.type = key.type;
+                    row.dataset.favorite = String(key.favorite);
+                    row.querySelector('.card-name').textContent = key.name;
+                    row.querySelector('.card-masked-key').textContent = `${key.value.substring(0, 4)}...${key.value.substring(key.value.length - 4)}`;
+                    const notesEl = row.querySelector('.card-notes');
+                    notesEl.value = key.notes || '';
+                    notesEl.dataset.keyId = key.id;
+                    const checkBtn = row.querySelector('.check-btn');
+                    const favoriteBtn = row.querySelector('.favorite-btn');
+                    
+                    if (key.favorite) {
+                        favoriteBtn.classList.add('is-favorite');
+                    }
+                    
+                    const gradientString = provider.gradient || 'from-gray-500 to-gray-600';
+                    checkBtn.classList.add('bg-gradient-to-r', ...gradientString.split(' '));
+
+                    updateCardStatus(row, 'unknown', 'Chưa kiểm tra'); // Use row instead of card
+                    tbody.appendChild(row);
+                });
+                keyGroupsContainer.appendChild(groupDiv);
             });
         }
 
-        function updateCardStatus(card, status, message) {
-            const statusDot = card.querySelector('.status-dot');
-            const statusText = card.querySelector('.card-status-text');
+        function updateCardStatus(row, status, message) { // Changed parameter from card to row
+            const statusDot = row.querySelector('.status-dot');
+            const statusText = row.querySelector('.card-status-text');
             statusDot.className = 'status-dot';
             statusDot.classList.add(`status-${status || 'unknown'}`);
             statusText.textContent = message || 'Chưa kiểm tra';
@@ -328,7 +409,8 @@
         function detectApiKeyType(key) {
             for (const type in API_PROVIDERS) {
                 if (API_PROVIDERS[type].regex.test(key)) {
-                    if (type === 'openai' && API_PROVIDERS['stability-ai'].regex.test(key)) continue;
+                    // Special handling for OpenAI vs Stability AI if their regexes overlap (though they shouldn't with current regexes)
+                    if (type === 'openai' && API_PROVIDERS['stability-ai'].regex.test(key)) continue; 
                     return type;
                 }
             }
@@ -396,29 +478,51 @@
             document.body.removeChild(textArea);
         }
         
-        keyListDiv.addEventListener('click', async (e) => {
-            const card = e.target.closest('.key-card');
-            if (!card) return;
+        // Event listener for actions within the key rows
+        keyGroupsContainer.addEventListener('click', async (e) => {
+            const row = e.target.closest('.key-row'); // Changed from .key-card to .key-row
+            if (!row) return;
 
-            const keyId = card.dataset.id;
+            const keyId = row.dataset.id;
             
             if (e.target.closest('.favorite-btn')) {
-                const isCurrentlyFavorite = card.dataset.favorite === 'true';
+                const isCurrentlyFavorite = row.dataset.favorite === 'true';
                 try {
                     await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify({ favorite: !isCurrentlyFavorite }) });
-                    loadKeys();
+                    loadKeys(); // Reload to reflect favorite status change and re-sort
                 } catch (error) {
                     showToast(`Lỗi cập nhật yêu thích: ${error.message}`);
                 }
             } else if (e.target.closest('.copy-btn')) {
-                copyToClipboard(card.dataset.value);
+                copyToClipboard(row.dataset.value);
             } else if (e.target.closest('.delete-btn')) {
                 showDeleteConfirmModal(keyId);
             } else if (e.target.closest('.check-btn')) {
-                const result = await checkKeyStatus(card, card.dataset.value, card.dataset.type);
+                const result = await checkKeyStatus(row, row.dataset.value, row.dataset.type);
                 showStatusModal(result);
             }
         });
+
+        // Event listener for group "Check All" buttons
+        keyGroupsContainer.addEventListener('click', async (e) => {
+            const checkGroupBtn = e.target.closest('.check-group-btn');
+            if (!checkGroupBtn) return;
+
+            const groupDiv = checkGroupBtn.closest('.bg-white');
+            const groupType = groupDiv.dataset.type;
+
+            setButtonLoading(checkGroupBtn, true);
+
+            const allKeyRowsInGroup = groupDiv.querySelectorAll('.key-row');
+            for (const row of allKeyRowsInGroup) {
+                await checkKeyStatus(row, row.dataset.value, row.dataset.type);
+                await new Promise(resolve => setTimeout(resolve, 300)); // Add small delay to avoid rate limit
+            }
+            
+            setButtonLoading(checkGroupBtn, false);
+            showToast(`Đã hoàn tất kiểm tra tất cả các key của nhóm ${API_PROVIDERS[groupType]?.name || groupType}.`);
+        });
+
 
         // --- Logic cho Modal ---
         function showDeleteConfirmModal(keyId) {
@@ -483,7 +587,8 @@
 
         closeModalBtn.addEventListener('click', () => statusDetailsModal.classList.add('hidden'));
 
-        keyListDiv.addEventListener('focusout', async (e) => {
+        // Event listener for notes textarea focusout (save notes)
+        keyGroupsContainer.addEventListener('focusout', async (e) => {
             if (e.target.closest('.card-notes')) {
                 const notesTextarea = e.target.closest('.card-notes');
                 try {
@@ -509,10 +614,10 @@
         }
         
         // --- LOGIC KIỂM TRA API (ĐÃ NÂNG CẤP) ---
-        async function checkKeyStatus(card, key, type) {
-            const checkBtn = card.querySelector('.check-btn');
+        async function checkKeyStatus(row, key, type) { // Changed parameter from card to row
+            const checkBtn = row.querySelector('.check-btn');
             setButtonLoading(checkBtn, true);
-            updateCardStatus(card, 'checking', 'Đang kiểm tra...');
+            updateCardStatus(row, 'checking', 'Đang kiểm tra...');
 
             let result;
             try {
@@ -529,7 +634,7 @@
             }
             
             setButtonLoading(checkBtn, false);
-            updateCardStatus(card, result.status, result.title);
+            updateCardStatus(row, result.status, result.title);
             return result;
         }
         
@@ -621,7 +726,7 @@
             }
         }
 
-        // --- Logic nút Kiểm tra tất cả ---
+        // --- Logic nút Kiểm tra tất cả (tổng thể) ---
         checkAllBtn.addEventListener('click', async () => {
             const checkAllBtnText = document.getElementById('check-all-btn-text');
             const checkAllLoader = document.getElementById('check-all-loader');
@@ -630,10 +735,11 @@
             checkAllBtnText.classList.add('hidden');
             checkAllLoader.classList.remove('hidden');
 
-            const allKeyCards = document.querySelectorAll('.key-card');
-            for (const card of allKeyCards) {
-                await checkKeyStatus(card, card.dataset.value, card.dataset.type);
-                await new Promise(resolve => setTimeout(resolve, 300)); // Thêm độ trễ nhỏ để tránh rate limit
+            // Select all key rows, regardless of group
+            const allKeyRows = document.querySelectorAll('.key-row');
+            for (const row of allKeyRows) {
+                await checkKeyStatus(row, row.dataset.value, row.dataset.type);
+                await new Promise(resolve => setTimeout(resolve, 300)); // Add small delay to avoid rate limit
             }
             
             checkAllBtn.disabled = false;
