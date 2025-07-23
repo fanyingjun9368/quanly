@@ -38,11 +38,7 @@
 
         /* --- CSS Tối ưu hóa cho Di động --- */
         @media (max-width: 768px) {
-            /* Ẩn header của bảng trên màn hình nhỏ */
-            .api-group-table thead {
-                display: none;
-            }
-            /* Biến mỗi hàng thành một card */
+            .api-group-table thead { display: none; }
             .api-group-table tr {
                 display: block;
                 border: 1px solid #e5e7eb;
@@ -51,7 +47,6 @@
                 padding: 1rem;
                 box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
             }
-            /* Biến mỗi ô thành một dòng, có nhãn ở trước */
             .api-group-table td {
                 display: block;
                 text-align: right;
@@ -61,10 +56,7 @@
                 padding-bottom: 0.5rem;
                 border-bottom: 1px solid #f3f4f6;
             }
-            .api-group-table tr td:last-child {
-                border-bottom: none;
-            }
-            /* Tạo nhãn cho mỗi ô dữ liệu */
+            .api-group-table tr td:last-child { border-bottom: none; }
             .api-group-table td:before {
                 content: attr(data-label);
                 position: absolute;
@@ -76,17 +68,12 @@
                 font-weight: 600;
                 color: #4b5563;
             }
-            /* Sắp xếp lại các nút hành động */
-            .action-buttons {
+            .action-buttons-mobile {
                 display: flex;
                 flex-wrap: wrap;
                 justify-content: flex-end;
                 gap: 0.5rem;
             }
-            .action-buttons > * {
-                flex-grow: 1; /* Các nút sẽ co giãn để lấp đầy không gian */
-            }
-            /* Căn chỉnh lại tên và key */
             .api-group-table td[data-label="Tên gợi nhớ"],
             .api-group-table td[data-label="API Key"] {
                 padding-left: 0.75rem;
@@ -96,17 +83,11 @@
             .api-group-table td[data-label="API Key"]:before {
                 display: none;
             }
-            .card-name-container, .card-key-container {
-                width: 100%;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-            }
         }
     </style>
 </head>
 <body class="bg-[#fffbbe] text-gray-800">
-    <div class="container mx-auto p-4 md:p-8 max-w-6xl">
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl"> <!-- Tăng max-width cho màn hình lớn -->
         <header id="app-header" class="flex flex-wrap justify-between items-center mb-10 hidden">
             <h1 class="text-2xl md:text-3xl font-bold text-gray-900 w-full sm:w-auto mb-4 sm:mb-0">Trình Quản Lý API Key</h1>
             <div id="user-info" class="flex items-center gap-4">
@@ -159,40 +140,48 @@
         </main>
     </div>
 
-    <!-- Template cho hàng API key trong bảng -->
+    <!-- Template cho hàng API key trong bảng (ĐÃ THIẾT KẾ LẠI) -->
     <template id="key-row-template">
-        <tr class="key-row" data-id="" data-value="" data-type="" data-favorite="" data-order="">
-            <td data-label="Tên gợi nhớ">
-                <div class="card-name-container">
-                    <button title="Đánh dấu yêu thích" class="favorite-btn p-1 text-gray-400 hover:text-yellow-400 rounded-lg transition-colors mr-2">
-                        <i class="far fa-star"></i>
+        <tr class="key-row border-b border-gray-200 hover:bg-gray-50" data-id="" data-value="" data-type="" data-favorite="" data-order="">
+            <!-- Tên gợi nhớ & Yêu thích -->
+            <td data-label="Tên gợi nhớ" class="px-4 py-3 align-middle">
+                <div class="flex items-center gap-3">
+                    <button title="Đánh dấu yêu thích" class="favorite-btn text-gray-400 hover:text-yellow-400 transition-colors flex-shrink-0">
+                        <i class="far fa-star text-xl"></i>
                     </button>
-                    <span class="card-name text-sm font-medium text-gray-900 break-all flex-grow" contenteditable="true"></span>
+                    <span class="card-name font-semibold text-gray-800 break-words" contenteditable="true"></span>
                 </div>
             </td>
-            <td data-label="API Key">
-                 <div class="card-key-container">
-                    <p class="card-masked-key font-mono text-xs text-gray-500 break-all"></p>
-                    <button title="Sao chép key" class="copy-btn p-1 text-gray-400 hover:text-indigo-600 rounded-lg transition-colors ml-2">
+            <!-- API Key -->
+            <td data-label="API Key" class="px-4 py-3 align-middle">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="card-masked-key font-mono text-sm text-gray-600"></span>
+                    <button title="Sao chép key" class="copy-btn p-2 text-gray-500 hover:text-indigo-600 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0">
                         <i class="far fa-copy"></i>
                     </button>
                 </div>
             </td>
-            <td data-label="Trạng thái">
-                <div class="flex items-center justify-end gap-1">
+            <!-- Trạng thái -->
+            <td data-label="Trạng thái" class="px-4 py-3 align-middle">
+                <div class="flex items-center gap-2">
                     <div class="status-dot flex-shrink-0"></div>
-                    <p class="card-status-text text-xs text-gray-600 flex-grow text-right">Chưa kiểm tra</p>
+                    <p class="card-status-text text-sm text-gray-700 font-medium">Chưa kiểm tra</p>
                 </div>
             </td>
-            <td data-label="Ghi chú">
-                <textarea class="card-notes w-full bg-gray-50 p-1 rounded-md text-xs text-gray-800 resize-none border border-gray-200 focus:ring-1 focus:ring-indigo-500" rows="1" placeholder="Thêm ghi chú..."></textarea>
+            <!-- Ghi chú -->
+            <td data-label="Ghi chú" class="px-4 py-3 align-middle">
+                <textarea class="card-notes w-full bg-transparent p-2 rounded-lg text-sm text-gray-800 border border-transparent hover:border-gray-300 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition" rows="1" placeholder="Thêm ghi chú..."></textarea>
             </td>
-            <td data-label="Hành động">
-                <div class="action-buttons">
-                    <button title="Di chuyển lên" class="move-up-btn bg-gray-200 hover:bg-blue-200 text-gray-700 hover:text-blue-800 text-xs font-bold py-1 px-2 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"><i class="fas fa-arrow-up"></i></button>
-                    <button title="Di chuyển xuống" class="move-down-btn bg-gray-200 hover:bg-blue-200 text-gray-700 hover:text-blue-800 text-xs font-bold py-1 px-2 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"><i class="fas fa-arrow-down"></i></button>
-                    <button class="check-btn btn-gradient text-white text-xs font-bold py-1 px-2 rounded-lg transition duration-300 flex items-center justify-center gap-1"><i class="fas fa-sync-alt"></i><span class="btn-text">Kiểm tra</span><div class="loader hidden"></div></button>
-                    <button class="delete-btn bg-gray-200 hover:bg-red-200 text-gray-700 hover:text-red-800 text-xs font-bold py-1 px-2 rounded-lg transition"><i class="fas fa-trash"></i></button>
+            <!-- Hành động -->
+            <td data-label="Hành động" class="px-4 py-3 align-middle">
+                <div class="flex items-center justify-center gap-1 md:gap-2 action-buttons-mobile">
+                    <!-- Move Buttons -->
+                    <button title="Di chuyển lên" class="move-up-btn p-2 text-gray-500 hover:text-blue-600 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"><i class="fas fa-arrow-up"></i></button>
+                    <button title="Di chuyển xuống" class="move-down-btn p-2 text-gray-500 hover:text-blue-600 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"><i class="fas fa-arrow-down"></i></button>
+                    <!-- Check Button -->
+                    <button class="check-btn btn-gradient text-white text-xs font-bold py-2 px-3 rounded-lg transition duration-300 flex items-center justify-center gap-1.5"><i class="fas fa-sync-alt"></i><span class="btn-text hidden md:inline">Check</span><div class="loader hidden"></div></button>
+                    <!-- Delete Button -->
+                    <button title="Xóa" class="delete-btn p-2 text-gray-500 hover:text-red-600 rounded-lg hover:bg-red-50 transition"><i class="fas fa-trash"></i></button>
                 </div>
             </td>
         </tr>
@@ -244,7 +233,7 @@
         const BACKEND_URL = 'https://quanly-backen.onrender.com';
         let idToken = null;
         let keyIdToDelete = null;
-        let allLoadedKeys = []; // Biến toàn cục để lưu trữ tất cả các key đã tải
+        let allLoadedKeys = [];
 
         const API_PROVIDERS = {
             'google-ai': { name: 'Google AI (Gemini)', regex: /^AIzaSy[A-Za-z0-9_-]{33}$/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-blue-500"><path d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.18,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.18,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.18,22C17.6,22 21.54,18.33 21.54,12.81C21.54,11.76 21.45,11.44 21.35,11.1Z"/></svg>`, gradient: 'from-blue-500 to-green-500' },
@@ -253,10 +242,8 @@
             'openai': { name: 'OpenAI', regex: /^sk-[A-Za-z0-9]{20,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-teal-500"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>`, gradient: 'from-teal-500 to-cyan-500' },
         };
 
-        // --- Logic Giao tiếp Backend (ĐÃ CẬP NHẬT) ---
         async function apiFetch(endpoint, options = {}) {
             if (!idToken) throw new Error("User not authenticated");
-
             const fetchOptions = {
                 ...options,
                 headers: { 
@@ -265,12 +252,9 @@
                     ...options.headers 
                 },
             };
-
-            // *** FIX: Luôn bỏ qua cache cho các yêu cầu GET để đảm bảo dữ liệu mới nhất ***
             if (!options.method || options.method.toUpperCase() === 'GET') {
                 fetchOptions.cache = 'no-store';
             }
-
             let response;
             try {
                 response = await fetch(`${BACKEND_URL}${endpoint}`, fetchOptions);
@@ -300,7 +284,6 @@
             }
         }
 
-        // --- Xác thực Google & Quản lý UI ---
         function decodeJwtPayload(token) {
             try {
                 const base64Url = token.split('.')[1];
@@ -358,7 +341,6 @@
             google.accounts.id.renderButton(document.getElementById("gsi-button"), { theme: "outline", size: "large", text: "signin_with", shape: "rectangular" });
         });
 
-        // --- Logic CRUD & Hiển thị ---
         const apiKeyInput = document.getElementById('api-key-input');
         const keyNameInput = document.getElementById('key-name-input');
         const addKeyBtn = document.getElementById('add-key-btn');
@@ -366,11 +348,9 @@
         const detectedApiLogo = document.getElementById('detected-api-logo');
         const keyRowTemplate = document.getElementById('key-row-template');
         const checkAllBtn = document.getElementById('check-all-btn');
-        
         const deleteConfirmModal = document.getElementById('delete-confirm-modal');
         const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
         const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
-
         const statusDetailsModal = document.getElementById('status-details-modal');
         const closeModalBtn = document.getElementById('close-modal-btn');
 
@@ -389,33 +369,30 @@
 
         function renderKeys(keysToRender) {
             keyGroupsContainer.innerHTML = '';
-
             if (!keysToRender || keysToRender.length === 0) {
                 keyGroupsContainer.innerHTML = `<p class="text-gray-500 col-span-full text-center">Bạn chưa có API key nào.</p>`;
                 return;
             }
-
             const groupedKeys = keysToRender.reduce((acc, key) => {
                 const type = key.type || 'unknown';
                 if (!acc[type]) acc[type] = [];
                 acc[type].push(key);
                 return acc;
             }, {});
-
             const sortedProviderTypes = Object.keys(API_PROVIDERS).filter(type => groupedKeys[type]);
             if (groupedKeys['unknown']) sortedProviderTypes.push('unknown');
 
             sortedProviderTypes.forEach(type => {
                 const provider = API_PROVIDERS[type] || { name: 'Loại không xác định', logo: '' };
                 const keysInGroup = groupedKeys[type].sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) || a.order - b.order);
-
                 const groupDiv = document.createElement('div');
                 groupDiv.className = 'bg-white p-4 md:p-6 rounded-xl shadow-lg';
                 groupDiv.dataset.type = type;
 
+                // --- BẢNG ĐÃ ĐƯỢC THIẾT KẾ LẠI ---
                 groupDiv.innerHTML = `
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                        <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-3">
                             ${provider.logo}
                             <span>${provider.name} Keys</span>
                         </h3>
@@ -427,13 +404,13 @@
                     </div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full api-group-table">
-                            <thead class="hidden md:table-header-group">
+                            <thead class="hidden md:table-header-group bg-gray-50">
                                 <tr>
-                                    <th class="py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Tên gợi nhớ</th>
-                                    <th class="py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">API Key</th>
-                                    <th class="py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Trạng thái</th>
-                                    <th class="py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Ghi chú</th>
-                                    <th class="py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider text-right" style="min-width: 150px;">Hành động</th>
+                                    <th scope="col" class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-3/12">Tên & Yêu thích</th>
+                                    <th scope="col" class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-3/12">API Key</th>
+                                    <th scope="col" class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-2/12">Trạng thái</th>
+                                    <th scope="col" class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-2/12">Ghi chú</th>
+                                    <th scope="col" class="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-2/12">Hành động</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -450,27 +427,24 @@
                     row.dataset.type = key.type;
                     row.dataset.favorite = String(key.favorite);
                     row.dataset.order = String(key.order);
-
                     const nameSpan = row.querySelector('.card-name');
                     nameSpan.textContent = key.name;
-                    
                     row.querySelector('.card-masked-key').textContent = `${key.value.substring(0, 4)}...${key.value.substring(key.value.length - 4)}`;
                     row.querySelector('.card-notes').value = key.notes || '';
-                    
                     const favoriteBtn = row.querySelector('.favorite-btn');
-                    if (key.favorite) favoriteBtn.classList.add('is-favorite');
-                    
+                    if (key.favorite) {
+                        favoriteBtn.classList.add('is-favorite');
+                        favoriteBtn.querySelector('i').classList.replace('far', 'fas');
+                    }
                     const checkBtn = row.querySelector('.check-btn');
                     const gradientString = provider.gradient || 'from-gray-500 to-gray-600';
                     checkBtn.classList.add('bg-gradient-to-r', ...gradientString.split(' '));
-
                     const moveUpBtn = row.querySelector('.move-up-btn');
                     const moveDownBtn = row.querySelector('.move-down-btn');
                     const siblingKeys = keysInGroup.filter(k => k.favorite === key.favorite);
                     const currentIndexInSubgroup = siblingKeys.findIndex(k => k.id === key.id);
                     if (currentIndexInSubgroup === 0) moveUpBtn.disabled = true;
                     if (currentIndexInSubgroup === siblingKeys.length - 1) moveDownBtn.disabled = true;
-
                     updateCardStatus(row, 'unknown', 'Chưa kiểm tra');
                     tbody.appendChild(row);
                 });
@@ -547,30 +521,23 @@
         async function handleMove(keyId, direction) {
             const keyToMove = allLoadedKeys.find(k => k.id === keyId);
             if (!keyToMove) return;
-
             const siblingKeys = allLoadedKeys
                 .filter(k => k.type === keyToMove.type && k.favorite === keyToMove.favorite)
                 .sort((a, b) => a.order - b.order);
-
             const currentIndex = siblingKeys.findIndex(k => k.id === keyId);
             let adjacentIndex = -1;
-
             if (direction === 'up' && currentIndex > 0) {
                 adjacentIndex = currentIndex - 1;
             } else if (direction === 'down' && currentIndex < siblingKeys.length - 1) {
                 adjacentIndex = currentIndex + 1;
             }
-
             if (adjacentIndex !== -1) {
                 const adjacentKey = siblingKeys[adjacentIndex];
-                
                 const tempOrder = keyToMove.order;
                 keyToMove.order = adjacentKey.order;
                 adjacentKey.order = tempOrder;
-
                 renderKeys(allLoadedKeys);
                 showToast('Đang lưu thay đổi vị trí...');
-
                 try {
                     await Promise.all([
                         updateKey(keyToMove.id, { order: keyToMove.order }),
@@ -589,25 +556,23 @@
                 console.error("Key not found for update:", keyId);
                 return;
             }
-
             const payload = {
                 name: updatedData.name !== undefined ? updatedData.name : keyToUpdate.name,
                 notes: updatedData.notes !== undefined ? updatedData.notes : keyToUpdate.notes,
                 favorite: updatedData.favorite !== undefined ? updatedData.favorite : keyToUpdate.favorite,
                 order: updatedData.order !== undefined ? updatedData.order : keyToUpdate.order,
             };
-
             try {
                 await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify(payload) });
-                showToast('Đã lưu thay đổi. Đang đồng bộ hóa...');
-                await loadKeys();
+                Object.assign(keyToUpdate, payload); // Cập nhật local state
+                renderKeys(allLoadedKeys); // Render lại để đảm bảo UI đồng bộ
+                showToast('Đã lưu thay đổi.');
             } catch (error) {
                 showToast(`Lỗi cập nhật: ${error.message}. Đang khôi phục...`);
-                await loadKeys();
+                await loadKeys(); // Tải lại toàn bộ nếu có lỗi
             }
         }
 
-        // --- EVENT LISTENERS (ĐÃ CẤU TRÚC LẠI) ---
         keyGroupsContainer.addEventListener('click', async (e) => {
             const checkGroupBtn = e.target.closest('.check-group-btn');
             if (checkGroupBtn) {
@@ -623,14 +588,11 @@
                 showToast(`Đã hoàn tất kiểm tra tất cả các key của nhóm ${API_PROVIDERS[groupType]?.name || groupType}.`);
                 return;
             }
-
             const row = e.target.closest('.key-row');
             if (!row) return;
-
             const keyId = row.dataset.id;
             const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
             if (!keyToUpdate) return;
-
             if (e.target.closest('.favorite-btn')) {
                 await updateKey(keyId, { favorite: !keyToUpdate.favorite });
             } else if (e.target.closest('.copy-btn')) {
@@ -650,11 +612,9 @@
         keyGroupsContainer.addEventListener('focusout', async (e) => {
             const row = e.target.closest('.key-row');
             if (!row) return;
-
             const keyId = row.dataset.id;
             const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
             if (!keyToUpdate) return;
-            
             if (e.target.matches('.card-notes')) {
                 const newNotes = e.target.value;
                 if (newNotes !== (keyToUpdate.notes || '')) {
@@ -671,15 +631,13 @@
             }
         });
 
-        // *** MỚI: Thêm event listener cho phím Enter để lưu thay đổi ***
         keyGroupsContainer.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && (e.target.matches('.card-name') || e.target.matches('.card-notes'))) {
-                e.preventDefault(); // Ngăn hành vi mặc định (như xuống dòng trong textarea)
-                e.target.blur();    // Làm cho element mất focus, sẽ trigger 'focusout' để lưu
+                e.preventDefault();
+                e.target.blur();
             }
         });
 
-        // --- Logic cho Modal ---
         function showDeleteConfirmModal(keyId) {
             keyIdToDelete = keyId;
             deleteConfirmModal.classList.remove('hidden');
@@ -711,15 +669,12 @@
             const modalMessage = statusDetailsModal.querySelector('#modal-message');
             const modalAdvice = statusDetailsModal.querySelector('#modal-advice');
             const modalHeader = statusDetailsModal.querySelector('#modal-header');
-
             modalHeader.className = 'flex justify-between items-center p-4 border-b rounded-t-lg';
             modalTitle.className = 'text-xl font-bold';
-            
             modalTitle.textContent = title;
             modalStatus.textContent = title;
             modalMessage.textContent = message;
             modalAdvice.textContent = advice;
-
             switch(status) {
                 case 'active': modalHeader.classList.add('bg-green-100', 'text-green-800'); break;
                 case 'limited': modalHeader.classList.add('bg-yellow-100', 'text-yellow-800'); break;
@@ -744,12 +699,10 @@
             }
         }
         
-        // --- LOGIC KIỂM TRA API ---
         async function checkKeyStatus(row, key, type) {
             const checkBtn = row.querySelector('.check-btn');
             setButtonLoading(checkBtn, true);
             updateCardStatus(row, 'checking', 'Đang kiểm tra...');
-
             let result;
             try {
                 switch (type) {
@@ -763,7 +716,6 @@
                 result = { status: 'invalid', title: 'Lỗi Kết Nối', message: error.message, advice: 'Kiểm tra kết nối mạng của bạn và thử lại. Có thể do CORS hoặc lỗi từ máy chủ API.' };
                 console.error(`Error checking ${type} key:`, error);
             }
-            
             setButtonLoading(checkBtn, false);
             updateCardStatus(row, result.status, result.title);
             return result;
@@ -836,25 +788,21 @@
             switch (response.status) {
                 case 401: return { status: 'invalid', title: 'Key không hợp lệ/hết hạn', message: errorMessage, advice: 'Kiểm tra lại key, hoặc tạo key mới. Có thể key của bạn đã bị thu hồi hoặc hết hạn tín dụng.' };
                 case 429: return { status: 'limited', title: 'Vượt giới hạn truy vấn', message: errorMessage, advice: 'Bạn đã đạt đến giới hạn yêu cầu hoặc hạn mức của tài khoản. Vui lòng kiểm tra trang quản trị OpenAI.' };
-                default: return { status: 'invalid', title: `Lỗi ${response.status}`, message: errorMessage, advice: 'Đã có lỗi xảy ra. Vui lòng kiểm tra trang trạng thái của OpenAI.' };
+                default: return { status: 'invalid', title: `Lỗi ${response.status}`, message: errorMessage, advice: 'Đã xảy ra lỗi không xác định. Vui lòng kiểm tra trang trạng thái của OpenAI.' };
             }
         }
 
-        // --- Logic nút Kiểm tra tất cả (tổng thể) ---
         checkAllBtn.addEventListener('click', async () => {
             const checkAllBtnText = document.getElementById('check-all-btn-text');
             const checkAllLoader = document.getElementById('check-all-loader');
-            
             checkAllBtn.disabled = true;
             checkAllBtnText.classList.add('hidden');
             checkAllLoader.classList.remove('hidden');
-
             const allKeyRows = document.querySelectorAll('.key-row');
             for (const row of allKeyRows) {
                 await checkKeyStatus(row, row.dataset.value, row.dataset.type);
                 await new Promise(resolve => setTimeout(resolve, 300));
             }
-            
             checkAllBtn.disabled = false;
             checkAllBtnText.classList.remove('hidden');
             checkAllLoader.classList.add('hidden');
