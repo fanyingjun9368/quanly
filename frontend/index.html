@@ -544,8 +544,42 @@
                 }
             }
         }
+        
+        // --- HÀM CẬP NHẬT TRUNG TÂM (ĐÃ SỬA LỖI) ---
+        async function updateKey(keyId, updatedData) {
+            const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
+            if (!keyToUpdate) return;
 
-        // --- EVENT LISTENERS (ĐÃ SỬA LỖI) ---
+            const originalState = { ...keyToUpdate };
+            
+            // Cập nhật trạng thái local trước
+            Object.assign(keyToUpdate, updatedData);
+
+            try {
+                // Luôn gửi đầy đủ payload
+                const payload = {
+                    name: keyToUpdate.name,
+                    notes: keyToUpdate.notes || '',
+                    favorite: keyToUpdate.favorite,
+                    order: keyToUpdate.order
+                };
+                await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify(payload) });
+                showToast('Đã lưu thay đổi thành công.');
+                // Tải lại để đảm bảo đồng bộ hoàn toàn, đặc biệt là sau khi thay đổi trạng thái yêu thích
+                 if (updatedData.hasOwnProperty('favorite')) {
+                    await loadKeys();
+                }
+            } catch (error) {
+                showToast(`Lỗi cập nhật: ${error.message}. Đang hoàn tác...`);
+                // Hoàn tác thay đổi trong local state
+                Object.assign(keyToUpdate, originalState);
+                // Tải lại từ server để đảm bảo trạng thái đúng
+                await loadKeys();
+            }
+        }
+
+
+        // --- EVENT LISTENERS (ĐÃ CẤU TRÚC LẠI) ---
 
         keyGroupsContainer.addEventListener('click', async (e) => {
             const row = e.target.closest('.key-row');
@@ -555,26 +589,7 @@
             if (!keyToUpdate) return;
 
             if (e.target.closest('.favorite-btn')) {
-                const isCurrentlyFavorite = keyToUpdate.favorite;
-                keyToUpdate.favorite = !isCurrentlyFavorite;
-                renderKeys(allLoadedKeys);
-                showToast('Đang cập nhật...');
-
-                try {
-                    const payload = {
-                        name: keyToUpdate.name,
-                        notes: keyToUpdate.notes || '',
-                        favorite: keyToUpdate.favorite,
-                        order: keyToUpdate.order
-                    };
-                    await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify(payload) });
-                    showToast('Đã cập nhật trạng thái yêu thích.');
-                    await loadKeys();
-                } catch (error) {
-                    showToast(`Lỗi: ${error.message}`);
-                    keyToUpdate.favorite = isCurrentlyFavorite; // Revert on error
-                    await loadKeys();
-                }
+                await updateKey(keyId, { favorite: !keyToUpdate.favorite });
             } else if (e.target.closest('.copy-btn')) {
                 copyToClipboard(row.dataset.value);
             } else if (e.target.closest('.delete-btn')) {
@@ -586,6 +601,17 @@
                 await handleMove(keyId, 'up');
             } else if (e.target.closest('.move-down-btn')) {
                 await handleMove(keyId, 'down');
+            } else if (e.target.closest('.check-group-btn')) {
+                const groupDiv = e.target.closest('.bg-white');
+                const groupType = groupDiv.dataset.type;
+                setButtonLoading(e.target.closest('.check-group-btn'), true);
+                const allKeyRowsInGroup = groupDiv.querySelectorAll('.key-row');
+                for (const row of allKeyRowsInGroup) {
+                    await checkKeyStatus(row, row.dataset.value, row.dataset.type);
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                }
+                setButtonLoading(e.target.closest('.check-group-btn'), false);
+                showToast(`Đã hoàn tất kiểm tra tất cả các key của nhóm ${API_PROVIDERS[groupType]?.name || groupType}.`);
             }
         });
 
@@ -596,64 +622,21 @@
             const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
             if (!keyToUpdate) return;
             
-            let changed = false;
-            let originalValue;
-
             if (e.target.matches('.card-notes')) {
                 const newNotes = e.target.value;
-                originalValue = keyToUpdate.notes || '';
-                if (newNotes !== originalValue) {
-                    keyToUpdate.notes = newNotes;
-                    changed = true;
+                if (newNotes !== (keyToUpdate.notes || '')) {
+                    await updateKey(keyId, { notes: newNotes });
                 }
             } else if (e.target.matches('.card-name')) {
                 const newName = e.target.textContent.trim();
-                originalValue = row.dataset.originalName;
-                if (newName && newName !== originalValue) {
-                    keyToUpdate.name = newName;
-                    row.dataset.originalName = newName;
-                    changed = true;
+                const originalName = row.dataset.originalName;
+                if (newName && newName !== originalName) {
+                    row.dataset.originalName = newName; // Cập nhật ngay để tránh gọi lại
+                    await updateKey(keyId, { name: newName });
                 } else if (!newName) {
-                    e.target.textContent = originalValue;
-                    keyToUpdate.name = originalValue;
+                    e.target.textContent = originalName; // Hoàn tác nếu để trống
                 }
             }
-
-            if (changed) {
-                try {
-                    const payload = {
-                        name: keyToUpdate.name,
-                        notes: keyToUpdate.notes || '',
-                        favorite: keyToUpdate.favorite,
-                        order: keyToUpdate.order
-                    };
-                    await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify(payload) });
-                    showToast('Đã lưu thay đổi thành công.');
-                } catch (error) {
-                    showToast(`Lỗi cập nhật: ${error.message}`);
-                    await loadKeys(); // Reload to revert failed changes
-                }
-            }
-        });
-
-        // Event listener cho nút "Kiểm tra tất cả" của nhóm
-        keyGroupsContainer.addEventListener('click', async (e) => {
-            const checkGroupBtn = e.target.closest('.check-group-btn');
-            if (!checkGroupBtn) return;
-
-            const groupDiv = checkGroupBtn.closest('.bg-white');
-            const groupType = groupDiv.dataset.type;
-
-            setButtonLoading(checkGroupBtn, true);
-
-            const allKeyRowsInGroup = groupDiv.querySelectorAll('.key-row');
-            for (const row of allKeyRowsInGroup) {
-                await checkKeyStatus(row, row.dataset.value, row.dataset.type);
-                await new Promise(resolve => setTimeout(resolve, 300));
-            }
-            
-            setButtonLoading(checkGroupBtn, false);
-            showToast(`Đã hoàn tất kiểm tra tất cả các key của nhóm ${API_PROVIDERS[groupType]?.name || groupType}.`);
         });
 
         // --- Logic cho Modal ---
