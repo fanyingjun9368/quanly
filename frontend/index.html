@@ -552,28 +552,29 @@
 
             const originalState = { ...keyToUpdate };
             
-            // Cập nhật trạng thái local trước
-            Object.assign(keyToUpdate, updatedData);
+            // Tạo trạng thái mới bằng cách hợp nhất dữ liệu cũ và dữ liệu cập nhật
+            const newState = { ...keyToUpdate, ...updatedData };
 
             try {
-                // Luôn gửi đầy đủ payload
+                // Luôn gửi đầy đủ payload từ trạng thái mới
                 const payload = {
-                    name: keyToUpdate.name,
-                    notes: keyToUpdate.notes || '',
-                    favorite: keyToUpdate.favorite,
-                    order: keyToUpdate.order
+                    name: newState.name,
+                    notes: newState.notes || '',
+                    favorite: newState.favorite,
+                    order: newState.order
                 };
+                
                 await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify(payload) });
                 showToast('Đã lưu thay đổi thành công.');
-                // Tải lại để đảm bảo đồng bộ hoàn toàn, đặc biệt là sau khi thay đổi trạng thái yêu thích
-                 if (updatedData.hasOwnProperty('favorite')) {
-                    await loadKeys();
-                }
+                
+                // Cập nhật trạng thái local sau khi server xác nhận thành công
+                Object.assign(keyToUpdate, newState);
+
             } catch (error) {
-                showToast(`Lỗi cập nhật: ${error.message}. Đang hoàn tác...`);
-                // Hoàn tác thay đổi trong local state
-                Object.assign(keyToUpdate, originalState);
-                // Tải lại từ server để đảm bảo trạng thái đúng
+                showToast(`Lỗi cập nhật: ${error.message}.`);
+                // Không làm gì với trạng thái local, vì sẽ tải lại ngay sau đó
+            } finally {
+                // Luôn tải lại từ server để đảm bảo giao diện đồng bộ 100%
                 await loadKeys();
             }
         }
@@ -582,8 +583,26 @@
         // --- EVENT LISTENERS (ĐÃ CẤU TRÚC LẠI) ---
 
         keyGroupsContainer.addEventListener('click', async (e) => {
+            // Xử lý các hành động cấp nhóm (không nằm trong một hàng) trước
+            const checkGroupBtn = e.target.closest('.check-group-btn');
+            if (checkGroupBtn) {
+                const groupDiv = checkGroupBtn.closest('.bg-white');
+                const groupType = groupDiv.dataset.type;
+                setButtonLoading(checkGroupBtn, true);
+                const allKeyRowsInGroup = groupDiv.querySelectorAll('.key-row');
+                for (const row of allKeyRowsInGroup) {
+                    await checkKeyStatus(row, row.dataset.value, row.dataset.type);
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                }
+                setButtonLoading(checkGroupBtn, false);
+                showToast(`Đã hoàn tất kiểm tra tất cả các key của nhóm ${API_PROVIDERS[groupType]?.name || groupType}.`);
+                return; // Đã xử lý, thoát
+            }
+
+            // Xử lý các hành động cấp hàng
             const row = e.target.closest('.key-row');
-            if (!row) return;
+            if (!row) return; // Thoát nếu không phải hành động trên hàng
+
             const keyId = row.dataset.id;
             const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
             if (!keyToUpdate) return;
@@ -601,17 +620,6 @@
                 await handleMove(keyId, 'up');
             } else if (e.target.closest('.move-down-btn')) {
                 await handleMove(keyId, 'down');
-            } else if (e.target.closest('.check-group-btn')) {
-                const groupDiv = e.target.closest('.bg-white');
-                const groupType = groupDiv.dataset.type;
-                setButtonLoading(e.target.closest('.check-group-btn'), true);
-                const allKeyRowsInGroup = groupDiv.querySelectorAll('.key-row');
-                for (const row of allKeyRowsInGroup) {
-                    await checkKeyStatus(row, row.dataset.value, row.dataset.type);
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                }
-                setButtonLoading(e.target.closest('.check-group-btn'), false);
-                showToast(`Đã hoàn tất kiểm tra tất cả các key của nhóm ${API_PROVIDERS[groupType]?.name || groupType}.`);
             }
         });
 
@@ -631,7 +639,6 @@
                 const newName = e.target.textContent.trim();
                 const originalName = row.dataset.originalName;
                 if (newName && newName !== originalName) {
-                    row.dataset.originalName = newName; // Cập nhật ngay để tránh gọi lại
                     await updateKey(keyId, { name: newName });
                 } else if (!newName) {
                     e.target.textContent = originalName; // Hoàn tác nếu để trống
