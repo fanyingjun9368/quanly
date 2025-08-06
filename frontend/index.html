@@ -11,17 +11,18 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { font-family: 'Be Vietnam Pro', sans-serif; }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; }
-        .status-active { background-color: #22c55e; }
-        .status-invalid { background-color: #ef4444; }
-        .status-limited { background-color: #f59e0b; }
-        .status-unknown { background-color: #9ca3af; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .status-active, .status-success { background-color: #22c55e; }
+        .status-invalid, .status-limited { background-color: #ef4444; }
+        .status-error { background-color: #f97316; }
+        .status-loading { background-color: #eab308; }
+        .status-unknown, .status-pending { background-color: #9ca3af; }
         .status-checking { background-color: #3b82f6; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        
         .toast { visibility: hidden; opacity: 0; transition: visibility 0s 0.5s, opacity 0.5s linear; }
         .toast.show { visibility: visible; opacity: 1; transition: opacity 0.5s linear; }
-        .btn-gradient { background-size: 200% auto; transition: background-position 0.5s ease; }
-        .btn-gradient:hover { background-position: right center; }
+        
         .loader {
             border: 2px solid white;
             border-top-color: transparent;
@@ -30,108 +31,59 @@
             height: 16px;
             animation: spin 1s linear infinite;
         }
-        .favorite-btn.is-favorite i {
-            font-weight: 900; /* Makes the star solid */
-            color: #facc15; /* yellow-400 */
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
         .modal-overlay { transition: opacity 0.3s ease; }
+        .modal-content { transition: transform 0.3s ease; }
 
-        /* --- CSS Tối ưu hóa cho Di động --- */
-        @media (max-width: 768px) {
-            .api-group-table thead { display: none; }
-            .api-group-table tr {
-                display: block;
-                border: 1px solid #e5e7eb;
-                border-radius: 0.75rem;
-                margin-bottom: 1rem;
-                padding: 1rem;
-                box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-            }
-            .api-group-table td {
-                display: block;
-                text-align: right;
-                position: relative;
-                padding-left: 50%;
-                padding-top: 0.5rem;
-                padding-bottom: 0.5rem;
-                border-bottom: 1px solid #f3f4f6;
-            }
-            .api-group-table tr td:last-child { border-bottom: none; }
-            .api-group-table td:before {
-                content: attr(data-label);
-                position: absolute;
-                left: 0.75rem;
-                width: 45%;
-                padding-right: 0.5rem;
-                white-space: nowrap;
-                text-align: left;
-                font-weight: 600;
-                color: #4b5563;
-            }
-            .action-buttons-mobile {
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: flex-end;
-                gap: 0.5rem;
-            }
-            .api-group-table td[data-label="Tên gợi nhớ"],
-            .api-group-table td[data-label="API Key"] {
-                padding-left: 0.75rem;
-                text-align: left;
-            }
-            .api-group-table td[data-label="Tên gợi nhớ"]:before,
-            .api-group-table td[data-label="API Key"]:before {
-                display: none;
-            }
-
-            /* Bổ sung CSS để thu gọn/mở rộng trên di động */
-            .key-row.collapsed-row td:not([data-label="Tên gợi nhớ"]):not([data-label="API Key"]) {
-                display: none !important;
-            }
-            .key-row .toggle-details-btn .fa-chevron-down {
-                transition: transform 0.3s ease;
-            }
-            .key-row.expanded-row .toggle-details-btn .fa-chevron-down {
-                transform: rotate(180deg);
-            }
-
-            /* Ẩn tiêu đề cột trên mobile theo yêu cầu */
-            .api-group-table td[data-label="Trạng thái"]:before,
-            .api-group-table td[data-label="Ghi chú"]:before,
-            .api-group-table td[data-label="Hành động"]:before {
-                display: none;
-            }
-            /* Điều chỉnh padding cho các ô đã ẩn data-label */
-            .api-group-table td[data-label="Trạng thái"],
-            .api-group-table td[data-label="Ghi chú"],
-            .api-group-table td[data-label="Hành động"] {
-                padding-left: 0.75rem; /* Điều chỉnh lại padding */
-                text-align: left; /* Căn trái lại nội dung */
-            }
+        /* Styles for collapsible rows */
+        .key-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
+            padding-top: 0;
+            padding-bottom: 0;
         }
+        .key-row.expanded .key-details {
+            max-height: 500px; /* Adjust as needed */
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+        .key-row.expanded .expand-icon {
+            transform: rotate(180deg);
+        }
+        .expand-icon {
+            transition: transform 0.3s ease;
+        }
+
+        /* Custom scrollbar for modals */
+        .modal-body::-webkit-scrollbar { width: 6px; }
+        .modal-body::-webkit-scrollbar-track { background: #f1f5f9; }
+        .modal-body::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+        .modal-body::-webkit-scrollbar-thumb:hover { background: #64748b; }
     </style>
 </head>
 <body class="bg-[#fffbbe] text-gray-800">
-    <div class="container mx-auto p-4 md:p-8 max-w-7xl"> <!-- Tăng max-width cho màn hình lớn -->
-        <header id="app-header" class="flex flex-wrap justify-between items-center mb-10 hidden">
-            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 w-full sm:w-auto mb-4 sm:mb-0">Trình Quản Lý API Key</h1>
-            <div id="user-info" class="flex items-center gap-4">
-                <div class="text-right"><p id="user-name" class="font-semibold text-gray-900"></p></div>
-                <img id="user-avatar" class="w-10 h-10 rounded-full" src="" alt="User Avatar"> <!-- Đăng xuất nhỏ lại -->
-                
-                <!-- Nút thêm API Key mới -->
-                <button id="add-new-key-header-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-lg transition duration-300 flex items-center justify-center gap-1 text-sm md:text-base">
-                    <i class="fas fa-plus-circle"></i><span class="hidden md:inline">Thêm Key</span>
+    <div class="container mx-auto p-4 md:p-6 max-w-7xl">
+        <header id="app-header" class="flex justify-between items-center mb-8 hidden">
+            <div class="flex items-center gap-3">
+                <img id="user-avatar" class="w-12 h-12 rounded-full" src="" alt="User Avatar">
+                <div>
+                    <h1 class="text-xl font-bold text-gray-900">Quản Lý API</h1>
+                    <p id="user-name" class="text-sm text-gray-600"></p>
+                </div>
+            </div>
+            <div id="user-actions" class="flex items-center gap-2">
+                 <button id="add-key-modal-btn" title="Thêm Key Mới" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold w-10 h-10 rounded-full transition flex items-center justify-center shadow-md">
+                    <i class="fas fa-plus"></i>
                 </button>
-
-                <!-- Nút kiểm tra tất cả -->
-                <button id="check-all-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-lg transition flex items-center justify-center gap-1 text-sm md:text-base disabled:bg-gray-400">
+                <button id="check-all-btn" title="Kiểm tra tất cả" class="bg-green-600 hover:bg-green-700 text-white font-bold w-10 h-10 rounded-full transition flex items-center justify-center shadow-md disabled:bg-gray-400">
                     <i class="fas fa-tasks"></i>
-                    <span id="check-all-btn-text" class="hidden md:inline">Kiểm tra tất cả</span>
                     <div id="check-all-loader" class="loader hidden"></div>
                 </button>
-
-                <button id="sign-out-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 rounded-lg transition text-sm md:text-base">Đăng xuất</button> <!-- Đăng xuất nhỏ lại -->
+                <button id="sign-out-btn" title="Đăng xuất" class="bg-red-500 hover:bg-red-600 text-white font-bold w-10 h-10 rounded-full transition flex items-center justify-center shadow-md">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
             </div>
         </header>
 
@@ -142,734 +94,816 @@
         </div>
 
         <main id="app-content" class="hidden">
-            <!-- Phần thêm Key mới được chuyển vào modal -->
-            <div>
-                <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
-                    <h2 class="text-2xl font-semibold text-gray-900 mb-4 sm:mb-0">Danh sách API Keys</h2>
-                    <!-- Nút kiểm tra tất cả đã được chuyển lên header -->
-                </div>
-                <!-- Vùng hiển thị các nhóm API key -->
-                <div id="key-groups-container" class="space-y-8">
-                    <!-- Các nhóm API key sẽ được render ở đây -->
-                </div>
+            <!-- Vùng hiển thị các nhóm API key -->
+            <div id="key-groups-container" class="space-y-6">
+                <!-- Các nhóm API key sẽ được render ở đây -->
             </div>
         </main>
     </div>
 
-    <!-- Template cho hàng API key trong bảng (ĐÃ THIẾT KẾ LẠI) -->
+    <!-- Template cho hàng API key (Collapsible) -->
     <template id="key-row-template">
-        <tr class="key-row border-b border-gray-200 hover:bg-gray-50" data-id="" data-value="" data-type="" data-favorite="" data-order="">
-            <!-- Tên gợi nhớ & Yêu thích -->
-            <td data-label="Tên gợi nhớ" class="px-4 py-3 align-middle">
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-3">
-                        <button title="Đánh dấu yêu thích" class="favorite-btn text-gray-400 hover:text-yellow-400 transition-colors flex-shrink-0">
-                            <i class="far fa-star text-xl"></i>
-                        </button>
-                        <span class="card-name font-semibold text-gray-800 break-words" contenteditable="true"></span>
-                    </div>
-                    <!-- Nút bật/tắt chi tiết trên di động -->
-                    <button class="toggle-details-btn p-2 text-gray-500 hover:text-gray-700 transition-colors md:hidden">
-                        <i class="fas fa-chevron-down text-sm"></i>
-                    </button>
+        <div class="key-row bg-white rounded-xl shadow-md p-4" data-id="" data-value="" data-type="" data-favorite="" data-order="">
+            <!-- Phần tóm tắt luôn hiển thị -->
+            <div class="key-summary flex items-center justify-between cursor-pointer">
+                <div class="flex items-center gap-3 flex-grow min-w-0">
+                    <div class="status-dot"></div>
+                    <span class="card-name font-semibold text-gray-800 truncate"></span>
                 </div>
-            </td>
-            <!-- API Key và Trạng thái (đã gộp) -->
-            <td data-label="API Key" class="px-4 py-3 align-middle">
-                <div class="flex items-center gap-2 mb-2 md:mb-0"> <!-- Thêm mb-2 để tạo khoảng cách với trạng thái trên mobile -->
-                    <span class="card-masked-key font-mono text-sm text-gray-600"></span>
-                    <button title="Sao chép key" class="copy-btn p-2 text-gray-500 hover:text-indigo-600 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0">
+                <div class="flex items-center gap-3 flex-shrink-0">
+                     <button title="Sao chép key" class="copy-btn p-2 text-gray-500 hover:text-indigo-600 rounded-lg hover:bg-gray-100 transition-colors">
                         <i class="far fa-copy"></i>
                     </button>
-                </div>
-                <!-- Trạng thái được chuyển lên đây -->
-                <div class="flex items-center gap-2">
-                    <div class="status-dot flex-shrink-0"></div>
-                    <p class="card-status-text text-sm text-gray-700 font-medium break-all">Chưa kiểm tra</p>
-                </div>
-            </td>
-            <!-- Trạng thái (cột cũ, giờ ẩn đi) -->
-            <td data-label="Trạng thái" class="px-4 py-3 align-middle hidden md:table-cell">
-                <!-- Nội dung cũ -->
-            </td>
-            <!-- Ghi chú -->
-            <td data-label="Ghi chú" class="px-4 py-3 align-middle">
-                <textarea class="card-notes w-full bg-transparent p-2 rounded-lg text-sm text-gray-800 border border-transparent hover:border-gray-300 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition" rows="1" placeholder="Thêm ghi chú..."></textarea>
-            </td>
-            <!-- Hành động -->
-            <td data-label="Hành động" class="px-4 py-3 align-middle">
-                <div class="flex items-center justify-center gap-1 md:gap-2 action-buttons-mobile">
-                    <!-- Move Buttons -->
-                    <button title="Di chuyển lên" class="move-up-btn btn-gradient text-white text-xs font-bold py-2 px-3 rounded-lg transition duration-300 flex items-center justify-center gap-1.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                        <i class="fas fa-arrow-up"></i>
-                    </button>
-                    <button title="Di chuyển xuống" class="move-down-btn btn-gradient text-white text-xs font-bold py-2 px-3 rounded-lg transition duration-300 flex items-center justify-center gap-1.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                        <i class="fas fa-arrow-down"></i>
-                    </button>
-                    <!-- Check Button (giữ nguyên style) -->
-                    <button class="check-btn btn-gradient text-white text-xs font-bold py-2 px-3 rounded-lg transition duration-300 flex items-center justify-center gap-1.5"><i class="fas fa-sync-alt"></i><span class="btn-text hidden md:inline">Check</span><div class="loader hidden"></div></button>
-                    <!-- Delete Button -->
-                    <button title="Xóa" class="delete-btn btn-gradient text-white text-xs font-bold py-2 px-3 rounded-lg transition duration-300 flex items-center justify-center gap-1.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700">
-                        <i class="fas fa-trash"></i>
+                    <button class="expand-btn p-2 text-gray-500 hover:text-indigo-600 rounded-lg hover:bg-gray-100">
+                        <i class="fas fa-chevron-down expand-icon"></i>
                     </button>
                 </div>
-            </td>
-        </tr>
+            </div>
+            <!-- Phần chi tiết có thể thu gọn -->
+            <div class="key-details border-t border-gray-200 mt-4">
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 mb-1">API Key</p>
+                        <p class="card-masked-key font-mono text-sm text-gray-600 bg-gray-50 p-2 rounded-md"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 mb-1">Ghi chú</p>
+                        <textarea class="card-notes w-full bg-gray-50 p-2 rounded-md text-sm text-gray-800 border border-gray-200 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition" rows="2" placeholder="Thêm ghi chú..."></textarea>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 mb-2">Hành động</p>
+                        <div class="flex items-center justify-start gap-2 flex-wrap">
+                            <button title="Di chuyển lên" class="move-up-btn action-btn"><i class="fas fa-arrow-up"></i></button>
+                            <button title="Di chuyển xuống" class="move-down-btn action-btn"><i class="fas fa-arrow-down"></i></button>
+                            <button title="Đánh dấu yêu thích" class="favorite-btn action-btn text-gray-500"><i class="far fa-star"></i></button>
+                            <button title="Kiểm tra nâng cao" class="check-btn action-btn text-blue-600"><i class="fas fa-vial"></i></button>
+                            <button title="Cài đặt kiểm tra" class="settings-btn action-btn text-gray-500"><i class="fas fa-cog"></i></button>
+                            <button title="Xóa" class="delete-btn action-btn text-red-500"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </template>
-
-    <!-- Toast thông báo nhanh -->
-    <div id="toast" class="toast fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-800 text-white py-2 px-5 rounded-lg shadow-lg z-50"></div>
-
-    <!-- Modal Xác nhận Xóa -->
-    <div id="delete-confirm-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
-            <h3 class="text-lg font-bold text-gray-900 mb-4">Xác nhận xóa</h3>
-            <p class="text-gray-600 mb-6">Bạn có chắc chắn muốn xóa API key này không? Hành động này không thể hoàn tác.</p>
-            <div class="flex justify-end space-x-4">
-                <button id="cancel-delete-btn" class="py-2 px-4 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition">Hủy</button>
-                <button id="confirm-delete-btn" class="py-2 px-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">Xóa</button>
-            </div>
-        </div>
-    </div>
     
-    <!-- Modal Chi tiết Trạng thái API -->
-    <div id="status-details-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div id="modal-header" class="flex justify-between items-center p-4 border-b rounded-t-lg">
-                <h3 id="modal-title" class="text-xl font-bold">Chi tiết Trạng thái API</h3>
-                <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
-            </div>
-            <div class="p-5">
-                <div class="mb-4">
-                    <p class="font-semibold text-gray-800">Trạng thái:</p>
-                    <p id="modal-status" class="text-gray-700 p-2 rounded-md font-medium"></p>
-                </div>
-                <div class="mb-4">
-                    <p class="font-semibold text-gray-800">Thông điệp từ API (gốc):</p>
-                    <p id="modal-message" class="text-sm text-gray-700 bg-gray-100 p-3 rounded-md font-mono"></p>
-                </div>
-                <div>
-                    <p class="font-semibold text-gray-800">💡 Khuyến nghị:</p>
-                    <p id="modal-advice" class="text-gray-600"></p>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- MODALS -->
 
-    <!-- Modal Thêm Key Mới -->
-    <div id="add-key-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
-            <div class="flex justify-between items-center mb-4">
+    <!-- Modal: Thêm Key Mới -->
+    <div id="add-key-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-40">
+        <div class="modal-content bg-white rounded-xl shadow-xl p-6 w-full max-w-lg transform scale-95">
+            <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-semibold text-gray-900">Thêm Key Mới</h2>
-                <button id="close-add-key-modal-btn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                <button class="close-modal-btn text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
             </div>
-            <div class="grid grid-cols-1 gap-4">
+            <div class="space-y-4">
                 <div>
-                    <label for="modal-api-key-input" class="block text-sm font-medium text-gray-600 mb-1">Dán API Key vào đây</label>
+                    <label for="api-key-input" class="block text-sm font-medium text-gray-600 mb-1">Dán API Key vào đây</label>
                     <div class="relative">
-                        <input type="text" id="modal-api-key-input" placeholder="Key sẽ được tự động nhận diện..." class="w-full bg-gray-50 border-gray-300 rounded-lg py-3 pl-4 pr-10 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm">
-                        <div id="modal-detected-api-logo" class="absolute inset-y-0 right-0 flex items-center pr-3"></div>
+                        <input type="text" id="api-key-input" placeholder="Key sẽ được tự động nhận diện..." class="w-full bg-gray-50 border-gray-300 rounded-lg py-3 pl-4 pr-10 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm">
+                        <div id="detected-api-logo" class="absolute inset-y-0 right-0 flex items-center pr-3"></div>
                     </div>
                 </div>
                 <div>
-                    <label for="modal-key-name-input" class="block text-sm font-medium text-gray-600 mb-1">Tên gợi nhớ</label>
-                    <input type="text" id="modal-key-name-input" placeholder="Ví dụ: Project hình ảnh" class="w-full bg-gray-50 border-gray-300 rounded-lg py-3 px-4 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
+                    <label for="key-name-input" class="block text-sm font-medium text-gray-600 mb-1">Tên gợi nhớ</label>
+                    <input type="text" id="key-name-input" placeholder="Ví dụ: Project hình ảnh" class="w-full bg-gray-50 border-gray-300 rounded-lg py-3 px-4 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
             </div>
-            <button id="modal-add-key-btn" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">
+            <button id="add-key-btn" class="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">
                 <i class="fas fa-plus-circle mr-2"></i>Lưu Key
             </button>
         </div>
     </div>
 
+    <!-- Modal: Xác nhận Xóa -->
+    <div id="delete-confirm-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform scale-95">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Xác nhận xóa</h3>
+            <p class="text-gray-600 mb-6">Bạn có chắc chắn muốn xóa API key này không? Hành động này không thể hoàn tác.</p>
+            <div class="flex justify-end space-x-4">
+                <button class="cancel-delete-btn py-2 px-4 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition">Hủy</button>
+                <button id="confirm-delete-btn" class="py-2 px-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">Xóa</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal: Chi tiết Trạng thái API (Kiểm tra nâng cao) -->
+    <div id="check-status-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-2xl transform scale-95 flex flex-col" style="height: 90vh; max-height: 700px;">
+            <div class="flex justify-between items-center p-4 border-b rounded-t-lg bg-gray-50">
+                <h3 class="text-xl font-bold">Kết quả Kiểm tra Nâng cao</h3>
+                <button class="close-modal-btn text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <div class="p-5 overflow-y-auto modal-body space-y-4">
+                <div>
+                     <h4 class="text-lg font-semibold mb-3 text-slate-900">Kết quả Trực quan</h4>
+                    <div id="check-status-dots" class="grid grid-cols-10 md:grid-cols-15 lg:grid-cols-20 gap-3 p-4 bg-slate-100 rounded-lg">
+                        <!-- Dots go here -->
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-lg font-semibold mb-3 text-slate-900">Nhật ký</h4>
+                    <div id="check-status-log" class="font-mono text-sm space-y-2 bg-slate-800 text-white p-4 rounded-lg h-64 overflow-y-auto">
+                        <p class="text-slate-400">Nhật ký yêu cầu sẽ xuất hiện ở đây...</p>
+                    </div>
+                </div>
+            </div>
+             <div class="p-4 border-t mt-auto">
+                <button class="stop-check-btn w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition">Dừng kiểm tra</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Cài đặt Kiểm tra -->
+    <div id="check-settings-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-lg transform scale-95">
+             <div class="flex justify-between items-center p-4 border-b">
+                <h3 class="text-xl font-bold">Cài đặt Kiểm tra Nâng cao</h3>
+                <button class="close-modal-btn text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <div class="p-5 space-y-4 modal-body overflow-y-auto max-h-[70vh]">
+                 <div>
+                    <label for="settings-provider" class="block text-sm font-medium text-slate-600 mb-1">Nhà Cung Cấp API</label>
+                    <select id="settings-provider" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></select>
+                </div>
+                <div>
+                    <label for="settings-url" class="block text-sm font-medium text-slate-600 mb-1">URL của API</label>
+                    <input type="url" id="settings-url" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="https://api.example.com/v1/data">
+                </div>
+                 <div>
+                    <label for="settings-requests" class="block text-sm font-medium text-slate-600 mb-1">Số lượng yêu cầu</label>
+                    <input type="number" id="settings-requests" value="20" min="1" max="100" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label for="settings-body" class="block text-sm font-medium text-slate-600 mb-1">Request Body (JSON)</label>
+                    <textarea id="settings-body" rows="5" class="w-full font-mono text-sm bg-slate-50 border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 p-4 border-t bg-gray-50">
+                <button class="reset-settings-btn py-2 px-4 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition">Reset về mặc định</button>
+                <button class="save-settings-btn py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">Lưu Cài đặt</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast thông báo nhanh -->
+    <div id="toast" class="toast fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-800 text-white py-2 px-5 rounded-lg shadow-lg z-[100]"></div>
+
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
-        // --- Cấu hình ---
-        const GOOGLE_CLIENT_ID = '833528835955-t7pai7q2tb836dqggme3h3560n58s6au.apps.googleusercontent.com';
-        const BACKEND_URL = 'https://quanly-backen.onrender.com'; // Giả định backend có endpoint kiểm tra key
-        let idToken = null;
-        let keyIdToDelete = null;
-        let allLoadedKeys = [];
+    // --- Cấu hình ---
+    const GOOGLE_CLIENT_ID = '833528835955-t7pai7q2tb836dqggme3h3560n58s6au.apps.googleusercontent.com';
+    const BACKEND_URL = 'https://quanly-backen.onrender.com';
+    let idToken = null;
+    let allLoadedKeys = [];
+    let keyToModify = null; // Dùng cho các modal
+    let isChecking = false; // Cờ để dừng quá trình kiểm tra
 
-        const API_PROVIDERS = {
-            'google-ai': { name: 'Google AI (Gemini)', regex: /^AIzaSy[A-Za-z0-9_-]{33}$/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-blue-500"><path d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.18,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.18,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.18,22C17.6,22 21.54,18.33 21.54,12.81C21.54,11.76 21.45,11.44 21.35,11.1Z"/></svg>`, gradient: 'from-blue-500 to-green-500' },
-            'hugging-face': { name: 'Hugging Face', regex: /^hf_[A-Za-z0-9]{30,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-yellow-500"><path d="M20.25 14.183C20.25 13.202 19.431 12.383 18.45 12.383C17.469 12.383 16.65 13.202 16.65 14.183C16.65 15.164 17.469 15.983 18.45 15.983C19.431 15.983 20.25 15.164 20.25 14.183ZM15.15 14.183C15.15 13.202 14.331 12.383 13.35 12.383C12.369 12.383 11.55 13.202 11.55 14.183C11.55 15.164 12.369 15.983 13.35 15.983C14.331 15.983 15.15 15.164 15.15 14.183ZM12 2C17.523 2 22 6.477 22 12C22 17.523 17.523 22 12 22C6.477 22 2 17.523 2 12C2 6.477 6.477 2 12 2ZM12 4C7.582 4 4 7.582 4 12C4 16.418 7.582 20 12 20C16.418 20 20 16.418 20 12C20 7.582 16.418 4 12 4ZM8.85 14.183C8.85 13.202 8.031 12.383 7.05 12.383C6.069 12.383 5.25 13.202 5.25 14.183C5.25 15.164 6.069 15.983 7.05 15.983C8.031 15.983 8.85 15.164 8.85 14.183Z"/></svg>`, gradient: 'from-yellow-500 to-orange-500' },
-            'stability-ai': { name: 'Stability AI', regex: /^sk-[A-Za-z0-9]{40,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-purple-500"><path d="M12 2L9.429 9.429 2 12l7.429 2.571L12 22l2.571-7.429L22 12l-7.429-2.571z"/></svg>`, gradient: 'from-purple-500 to-pink-500' },
-            'openai': { name: 'OpenAI', regex: /^sk-[A-Za-z0-9]{20,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-teal-500"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>`, gradient: 'from-teal-500 to-cyan-500' },
+    // --- DOM Elements ---
+    const appHeader = document.getElementById('app-header');
+    const loginView = document.getElementById('login-view');
+    const appContent = document.getElementById('app-content');
+    const gsiButton = document.getElementById('gsi-button');
+    const userNameEl = document.getElementById('user-name');
+    const userAvatarEl = document.getElementById('user-avatar');
+    const signOutBtn = document.getElementById('sign-out-btn');
+    const addKeyModalBtn = document.getElementById('add-key-modal-btn');
+    const checkAllBtn = document.getElementById('check-all-btn');
+    const keyGroupsContainer = document.getElementById('key-groups-container');
+    const keyRowTemplate = document.getElementById('key-row-template');
+    const toast = document.getElementById('toast');
+
+    // Modals
+    const addKeyModal = document.getElementById('add-key-modal');
+    const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+    const checkStatusModal = document.getElementById('check-status-modal');
+    const checkSettingsModal = document.getElementById('check-settings-modal');
+
+    // Add Key Modal Elements
+    const apiKeyInput = document.getElementById('api-key-input');
+    const keyNameInput = document.getElementById('key-name-input');
+    const addKeyBtn = document.getElementById('add-key-btn');
+    const detectedApiLogo = document.getElementById('detected-api-logo');
+
+    // Check Status Modal Elements
+    const checkStatusDots = document.getElementById('check-status-dots');
+    const checkStatusLog = document.getElementById('check-status-log');
+    const stopCheckBtn = document.querySelector('.stop-check-btn');
+
+    // Check Settings Modal Elements
+    const settingsProviderSelect = document.getElementById('settings-provider');
+    const settingsUrlInput = document.getElementById('settings-url');
+    const settingsRequestsInput = document.getElementById('settings-requests');
+    const settingsBodyTextarea = document.getElementById('settings-body');
+    const saveSettingsBtn = document.querySelector('.save-settings-btn');
+    const resetSettingsBtn = document.querySelector('.reset-settings-btn');
+
+
+    // --- Cấu hình API Providers ---
+    const API_PROVIDERS = {
+        'google-ai': { 
+            name: 'Google AI (Gemini)', 
+            regex: /^AIzaSy[A-Za-z0-9_-]{33}$/, 
+            logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-blue-500"><path d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.18,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.18,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.18,22C17.6,22 21.54,18.33 21.54,12.81C21.54,11.76 21.45,11.44 21.35,11.1Z"/></svg>`,
+        },
+        'openai': { 
+            name: 'OpenAI', 
+            regex: /^sk-[A-Za-z0-9]{20,}/, 
+            logo: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-teal-500"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>`,
+        },
+        'hugging-face': { 
+            name: 'Hugging Face', 
+            regex: /^hf_[A-Za-z0-9]{30,}/, 
+            logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-yellow-500"><path d="M20.25 14.183C20.25 13.202 19.431 12.383 18.45 12.383C17.469 12.383 16.65 13.202 16.65 14.183C16.65 15.164 17.469 15.983 18.45 15.983C19.431 15.983 20.25 15.164 20.25 14.183ZM15.15 14.183C15.15 13.202 14.331 12.383 13.35 12.383C12.369 12.383 11.55 13.202 11.55 14.183C11.55 15.164 12.369 15.983 13.35 15.983C14.331 15.983 15.15 15.164 15.15 14.183ZM12 2C17.523 2 22 6.477 22 12C22 17.523 17.523 22 12 22C6.477 22 2 17.523 2 12C2 6.477 6.477 2 12 2ZM12 4C7.582 4 4 7.582 4 12C4 16.418 7.582 20 12 20C16.418 20 20 16.418 20 12C20 7.582 16.418 4 12 4ZM8.85 14.183C8.85 13.202 8.031 12.383 7.05 12.383C6.069 12.383 5.25 13.202 5.25 14.183C5.25 15.164 6.069 15.983 7.05 15.983C8.031 15.983 8.85 15.164 8.85 14.183Z"/></svg>`,
+        },
+        'stability-ai': { 
+            name: 'Stability AI', 
+            regex: /^sk-[A-Za-z0-9]{40,}/, 
+            logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-purple-500"><path d="M12 2L9.429 9.429 2 12l7.429 2.571L12 22l2.571-7.429L22 12l-7.429-2.571z"/></svg>`,
+        },
+    };
+    
+    // Cấu hình kiểm tra mặc định, lấy từ api-check-b.html
+    const CHECK_PROVIDERS_CONFIG = {
+        'google-ai': {
+            name: 'Google Gemini',
+            url: 'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=',
+            body: { content: { parts: [{ text: "Kiểm tra giới hạn" }] } },
+            authType: 'url'
+        },
+        'openai': {
+            name: 'OpenAI',
+            url: 'https://api.openai.com/v1/chat/completions',
+            body: { model: "gpt-3.5-turbo", messages: [{role: "user", content: "Say this is a test"}]},
+            authType: 'bearer'
+        },
+        'hugging-face': {
+            name: 'Hugging Face',
+            url: 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
+            body: { inputs: ["Kiểm tra giới hạn API"] },
+            authType: 'bearer'
+        },
+        'stability-ai': {
+            name: 'Stability AI',
+            url: 'https://api.stability.ai/v1/user/balance', // Dùng endpoint balance để check, nhẹ hơn
+            method: 'GET', // Thay đổi method
+            body: null, // Không cần body
+            authType: 'bearer'
+        },
+        'unknown': {
+            name: 'Unknown/Custom',
+            url: '',
+            body: {},
+            authType: 'bearer'
+        }
+    };
+
+
+    // --- Authentication & Initialization ---
+    async function apiFetch(endpoint, options = {}) {
+        if (!idToken) throw new Error("User not authenticated");
+        const fetchOptions = {
+            ...options,
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${idToken}`, 
+                ...options.headers 
+            },
         };
-
-        async function apiFetch(endpoint, options = {}) {
-            if (!idToken) throw new Error("User not authenticated");
-            const fetchOptions = {
-                ...options,
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${idToken}`, 
-                    ...options.headers 
-                },
-            };
-            if (!options.method || options.method.toUpperCase() === 'GET') {
-                fetchOptions.cache = 'no-store';
-            }
-            let response;
+        if (!options.method || options.method.toUpperCase() === 'GET') {
+            fetchOptions.cache = 'no-store';
+        }
+        const response = await fetch(`${BACKEND_URL}${endpoint}`, fetchOptions);
+        if (!response.ok) {
+            let errorMsg = `Lỗi HTTP! Mã: ${response.status}`;
             try {
-                response = await fetch(`${BACKEND_URL}${endpoint}`, fetchOptions);
-            } catch (networkError) {
-                console.error("Network error:", networkError);
-                throw new Error("Lỗi mạng. Không thể kết nối đến máy chủ.");
-            }
-            if (!response.ok) {
-                let errorMsg = `Lỗi HTTP! Mã: ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    errorMsg = errorData.error || JSON.stringify(errorData);
-                } catch (e) {
-                    errorMsg = `Lỗi máy chủ (Mã: ${response.status}). Không thể đọc phản hồi.`;
-                }
-                throw new Error(errorMsg);
-            }
-            if (response.status === 204) return null;
-            try {
-                return await response.json();
-            } catch (e) {
-                if (e instanceof SyntaxError) {
-                    console.error("Failed to parse JSON response. Backend might be misconfigured.", e);
-                    throw new Error("Lỗi giao tiếp: Backend trả về dữ liệu không hợp lệ. Vui lòng kiểm tra lại cấu hình BACKEND_URL.");
-                }
-                throw e;
-            }
+                const errorData = await response.json();
+                errorMsg = errorData.error || JSON.stringify(errorData);
+            } catch (e) { /* ignore */ }
+            throw new Error(errorMsg);
         }
+        if (response.status === 204) return null;
+        return response.json();
+    }
 
-        function decodeJwtPayload(token) {
-            try {
-                const base64Url = token.split('.')[1];
-                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-                return JSON.parse(jsonPayload);
-            } catch (e) {
-                console.error("Error decoding JWT", e);
-                return null;
-            }
+    function decodeJwtPayload(token) {
+        try {
+            return JSON.parse(atob(token.split('.')[1]));
+        } catch (e) {
+            return null;
         }
+    }
 
-        function initializeAuthenticatedApp(token) {
-            idToken = token;
-            const userProfile = decodeJwtPayload(idToken);
-            if (!userProfile) {
-                showToast("Không thể giải mã thông tin người dùng.");
-                return;
-            }
-            document.getElementById('user-name').textContent = userProfile.name;
-            document.getElementById('user-avatar').src = userProfile.picture;
-            document.getElementById('login-view').classList.add('hidden');
-            document.getElementById('app-header').classList.remove('hidden');
-            document.getElementById('app-content').classList.remove('hidden');
-            loadKeys();
+    function initializeAuthenticatedApp(token) {
+        idToken = token;
+        const userProfile = decodeJwtPayload(idToken);
+        if (!userProfile) {
+            showToast("Không thể giải mã thông tin người dùng.");
+            return;
         }
+        userNameEl.textContent = userProfile.name;
+        userAvatarEl.src = userProfile.picture;
+        loginView.classList.add('hidden');
+        appHeader.classList.remove('hidden');
+        appHeader.classList.add('flex');
+        appContent.classList.remove('hidden');
+        loadKeys();
+    }
 
-        window.onload = function () {
-            if (GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID' || BACKEND_URL === 'YOUR_RENDER_BACKEND_URL') {
-                document.getElementById('login-view').innerHTML = `<h2 class="text-2xl text-red-500 font-bold">Lỗi Cấu Hình Frontend</h2><p class="text-gray-600 mt-2">Vui lòng điền GOOGLE_CLIENT_ID và BACKEND_URL trong tệp HTML.</p>`;
-                return;
-            }
-            const storedIdToken = localStorage.getItem('idToken');
-            if (storedIdToken) {
-                initializeAuthenticatedApp(storedIdToken);
-            } else {
-                google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredentialResponse, auto_select: true });
-                google.accounts.id.renderButton(document.getElementById("gsi-button"), { theme: "outline", size: "large", text: "signin_with", shape: "rectangular" });
-            }
-        };
-
-        function handleCredentialResponse(response) {
-            localStorage.setItem('idToken', response.credential);
-            initializeAuthenticatedApp(response.credential);
+    window.onload = function () {
+        const storedIdToken = localStorage.getItem('idToken');
+        if (storedIdToken) {
+            initializeAuthenticatedApp(storedIdToken);
+        } else {
+            google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredentialResponse, auto_select: true });
+            google.accounts.id.renderButton(gsiButton, { theme: "outline", size: "large", text: "signin_with", shape: "rectangular" });
         }
+    };
 
-        document.getElementById('sign-out-btn').addEventListener('click', () => {
-            idToken = null;
-            localStorage.removeItem('idToken');
-            google.accounts.id.disableAutoSelect();
-            document.getElementById('login-view').classList.remove('hidden');
-            document.getElementById('app-header').classList.add('hidden');
-            document.getElementById('app-content').classList.add('hidden');
-            google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredentialResponse });
-            google.accounts.id.renderButton(document.getElementById("gsi-button"), { theme: "outline", size: "large", text: "signin_with", shape: "rectangular" });
+    function handleCredentialResponse(response) {
+        localStorage.setItem('idToken', response.credential);
+        initializeAuthenticatedApp(response.credential);
+    }
+
+    signOutBtn.addEventListener('click', () => {
+        idToken = null;
+        localStorage.removeItem('idToken');
+        google.accounts.id.disableAutoSelect();
+        loginView.classList.remove('hidden');
+        appHeader.classList.add('hidden');
+        appContent.classList.add('hidden');
+        google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredentialResponse });
+        google.accounts.id.renderButton(gsiButton, { theme: "outline", size: "large", text: "signin_with", shape: "rectangular" });
+    });
+
+    // --- Key Management ---
+    async function loadKeys() {
+        try {
+            const keys = await apiFetch('/api/keys');
+            allLoadedKeys = keys.map(key => ({
+                ...key,
+                order: key.order ?? new Date(key.created_at).getTime()
+            }));
+            renderKeys(allLoadedKeys);
+        } catch (error) {
+            showToast(`Lỗi tải keys: ${error.message}`);
+        }
+    }
+
+    function renderKeys(keysToRender) {
+        keyGroupsContainer.innerHTML = '';
+        if (!keysToRender || keysToRender.length === 0) {
+            keyGroupsContainer.innerHTML = `<p class="text-gray-500 text-center py-10">Bạn chưa có API key nào. Bấm nút <i class="fas fa-plus mx-1"></i> ở góc trên để thêm.</p>`;
+            return;
+        }
+        const groupedKeys = keysToRender.reduce((acc, key) => {
+            const type = key.type || 'unknown';
+            if (!acc[type]) acc[type] = [];
+            acc[type].push(key);
+            return acc;
+        }, {});
+        
+        const providerOrder = Object.keys(API_PROVIDERS);
+        const sortedProviderTypes = Object.keys(groupedKeys).sort((a, b) => {
+            const indexA = providerOrder.indexOf(a);
+            const indexB = providerOrder.indexOf(b);
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            return indexA - indexB;
         });
 
-        // Các phần tử cho Modal Thêm Key Mới
-        const addKeyModal = document.getElementById('add-key-modal');
-        const addNewKeyHeaderBtn = document.getElementById('add-new-key-header-btn');
-        const closeAddKeyModalBtn = document.getElementById('close-add-key-modal-btn');
-        const modalApiKeyInput = document.getElementById('modal-api-key-input');
-        const modalKeyNameInput = document.getElementById('modal-key-name-input');
-        const modalAddKeyBtn = document.getElementById('modal-add-key-btn');
-        const modalDetectedApiLogo = document.getElementById('modal-detected-api-logo');
+        sortedProviderTypes.forEach(type => {
+            const provider = API_PROVIDERS[type] || { name: 'Loại không xác định', logo: '' };
+            const keysInGroup = groupedKeys[type].sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) || a.order - b.order);
+            
+            const groupHeader = document.createElement('h3');
+            groupHeader.className = "text-lg font-semibold text-gray-800 flex items-center gap-3";
+            groupHeader.innerHTML = `${provider.logo} <span>${provider.name} Keys</span>`;
+            keyGroupsContainer.appendChild(groupHeader);
 
-        const keyGroupsContainer = document.getElementById('key-groups-container');
-        const keyRowTemplate = document.getElementById('key-row-template');
-        const checkAllBtn = document.getElementById('check-all-btn');
-        const deleteConfirmModal = document.getElementById('delete-confirm-modal');
-        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
-        const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
-        const statusDetailsModal = document.getElementById('status-details-modal');
-        const closeModalBtn = document.getElementById('close-modal-btn');
-
-        // Sự kiện mở modal thêm key
-        addNewKeyHeaderBtn.addEventListener('click', () => {
-            addKeyModal.classList.remove('hidden');
-            modalApiKeyInput.value = '';
-            modalKeyNameInput.value = '';
-            modalDetectedApiLogo.innerHTML = '';
-            modalAddKeyBtn.disabled = true;
-        });
-
-        // Sự kiện đóng modal thêm key
-        closeAddKeyModalBtn.addEventListener('click', () => {
-            addKeyModal.classList.add('hidden');
-        });
-
-        // Validate form trong modal
-        function validateModalForm() {
-            const key = modalApiKeyInput.value.trim();
-            const name = modalKeyNameInput.value.trim();
-            const type = detectApiKeyType(key);
-            modalDetectedApiLogo.innerHTML = type !== 'unknown' ? API_PROVIDERS[type].logo : '';
-            modalAddKeyBtn.disabled = !(key && name && type !== 'unknown');
-        }
-        modalApiKeyInput.addEventListener('input', validateModalForm);
-        modalKeyNameInput.addEventListener('input', validateModalForm);
-
-        // Thêm key mới từ modal
-        modalAddKeyBtn.addEventListener('click', async () => {
-            const newKey = {
-                id: crypto.randomUUID(),
-                name: modalKeyNameInput.value.trim(),
-                value: modalApiKeyInput.value.trim(),
-                type: detectApiKeyType(modalApiKeyInput.value.trim()),
-                notes: '',
-                favorite: false,
-                order: Date.now(),
-                created_at: new Date().toISOString()
-            };
-            try {
-                await apiFetch('/api/keys', { method: 'POST', body: JSON.stringify(newKey) });
-                showToast("Đã thêm key thành công!");
-                addKeyModal.classList.add('hidden'); // Đóng modal sau khi thêm
-                await loadKeys();
-            } catch (error) {
-                showToast(`Lỗi: ${error.message}`);
-            }
-        });
-
-
-        async function loadKeys() {
-            try {
-                const keys = await apiFetch('/api/keys');
-                allLoadedKeys = keys.map(key => ({
-                    ...key,
-                    order: key.order ?? new Date(key.created_at).getTime()
-                }));
-                renderKeys(allLoadedKeys);
-            } catch (error) {
-                showToast(`Lỗi tải keys: ${error.message}`);
-            }
-        }
-
-        function renderKeys(keysToRender) {
-            keyGroupsContainer.innerHTML = '';
-            if (!keysToRender || keysToRender.length === 0) {
-                keyGroupsContainer.innerHTML = `<p class="text-gray-500 col-span-full text-center">Bạn chưa có API key nào.</p>`;
-                return;
-            }
-            const groupedKeys = keysToRender.reduce((acc, key) => {
-                const type = key.type || 'unknown';
-                if (!acc[type]) acc[type] = [];
-                acc[type].push(key);
-                return acc;
-            }, {});
-            const sortedProviderTypes = Object.keys(API_PROVIDERS).filter(type => groupedKeys[type]);
-            if (groupedKeys['unknown']) sortedProviderTypes.push('unknown');
-
-            sortedProviderTypes.forEach(type => {
-                const provider = API_PROVIDERS[type] || { name: 'Loại không xác định', logo: '' };
-                const keysInGroup = groupedKeys[type].sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) || a.order - b.order);
-                const groupDiv = document.createElement('div');
-                groupDiv.className = 'bg-white p-4 md:p-6 rounded-xl shadow-lg';
-                groupDiv.dataset.type = type;
-
-                // --- BẢNG ĐÃ ĐƯỢC THIẾT KẾ LẠI ---
-                groupDiv.innerHTML = `
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-3">
-                            ${provider.logo}
-                            <span>${provider.name} Keys</span>
-                        </h3>
-                        <button class="check-group-btn w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2 disabled:bg-gray-400">
-                            <i class="fas fa-sync-alt"></i>
-                            <span class="btn-text hidden md:inline">Kiểm tra nhóm</span>
-                            <div class="loader hidden"></div>
-                        </button>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full api-group-table">
-                            <thead class="hidden md:table-header-group bg-gray-50">
-                                <tr>
-                                    <th scope="col" class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-3/12">Tên & Yêu thích</th>
-                                    <th scope="col" class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-2/12">API Key</th>
-                                    <th scope="col" class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-2/12">Trạng thái</th>
-                                    <th scope="col" class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-3/12">Ghi chú</th>
-                                    <th scope="col" class="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-2/12">Hành động</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            </tbody>
-                        </table>
-                    </div>
-                `;
+            const groupGrid = document.createElement('div');
+            groupGrid.className = "grid grid-cols-1 gap-4";
+            
+            keysInGroup.forEach(key => {
+                const keyRow = keyRowTemplate.content.cloneNode(true).firstElementChild;
+                keyRow.dataset.id = key.id;
+                keyRow.dataset.value = key.value;
+                keyRow.dataset.type = key.type;
                 
-                const tbody = groupDiv.querySelector('tbody');
-                keysInGroup.forEach((key) => {
-                    const row = keyRowTemplate.content.cloneNode(true).firstElementChild;
-                    row.dataset.id = key.id;
-                    row.dataset.value = key.value;
-                    row.dataset.type = key.type;
-                    row.dataset.favorite = String(key.favorite);
-                    row.dataset.order = String(key.order);
-                    const nameSpan = row.querySelector('.card-name');
-                    nameSpan.textContent = key.name;
-                    row.querySelector('.card-masked-key').textContent = `${key.value.substring(0, 4)}...${key.value.substring(key.value.length - 4)}`;
-                    row.querySelector('.card-notes').value = key.notes || '';
-                    const favoriteBtn = row.querySelector('.favorite-btn');
-                    if (key.favorite) {
-                        favoriteBtn.classList.add('is-favorite');
-                        favoriteBtn.querySelector('i').classList.replace('far', 'fas');
-                    }
-                    const checkBtn = row.querySelector('.check-btn');
-                    const gradientString = provider.gradient || 'from-gray-500 to-gray-600';
-                    checkBtn.classList.add('bg-gradient-to-r', ...gradientString.split(' '));
-                    const moveUpBtn = row.querySelector('.move-up-btn');
-                    const moveDownBtn = row.querySelector('.move-down-btn');
-                    const siblingKeys = keysInGroup.filter(k => k.favorite === key.favorite);
-                    const currentIndexInSubgroup = siblingKeys.findIndex(k => k.id === key.id);
-                    if (currentIndexInSubgroup === 0) moveUpBtn.disabled = true;
-                    if (currentIndexInSubgroup === siblingKeys.length - 1) moveDownBtn.disabled = true;
-                    updateCardStatus(row, 'unknown', 'Chưa kiểm tra');
+                keyRow.querySelector('.card-name').textContent = key.name;
+                keyRow.querySelector('.card-masked-key').textContent = `${key.value.substring(0, 4)}...${key.value.substring(key.value.length - 4)}`;
+                keyRow.querySelector('.card-notes').value = key.notes || '';
 
-                    // Thêm class 'collapsed-row' mặc định cho mobile
-                    if (window.innerWidth <= 768) {
-                        row.classList.add('collapsed-row');
-                    }
+                const favoriteBtn = keyRow.querySelector('.favorite-btn');
+                if (key.favorite) {
+                    favoriteBtn.classList.add('text-yellow-400');
+                    favoriteBtn.querySelector('i').classList.replace('far', 'fas');
+                }
 
-                    tbody.appendChild(row);
+                // Add CSS classes for action buttons
+                keyRow.querySelectorAll('.action-btn').forEach(btn => {
+                    btn.classList.add('w-10', 'h-10', 'rounded-lg', 'flex', 'items-center', 'justify-center', 'bg-gray-100', 'hover:bg-gray-200', 'transition');
                 });
-                keyGroupsContainer.appendChild(groupDiv);
+                
+                groupGrid.appendChild(keyRow);
             });
+            keyGroupsContainer.appendChild(groupGrid);
+        });
+    }
+    
+    // --- Event Handlers for Key Rows ---
+    keyGroupsContainer.addEventListener('click', async (e) => {
+        const keyRow = e.target.closest('.key-row');
+        if (!keyRow) return;
+
+        keyToModify = allLoadedKeys.find(k => k.id === keyRow.dataset.id);
+        if (!keyToModify) return;
+
+        const expandBtn = e.target.closest('.expand-btn');
+        const copyBtn = e.target.closest('.copy-btn');
+        const favoriteBtn = e.target.closest('.favorite-btn');
+        const deleteBtn = e.target.closest('.delete-btn');
+        const checkBtn = e.target.closest('.check-btn');
+        const settingsBtn = e.target.closest('.settings-btn');
+        const moveUpBtn = e.target.closest('.move-up-btn');
+        const moveDownBtn = e.target.closest('.move-down-btn');
+
+        if (expandBtn || e.target.closest('.key-summary') && !copyBtn) {
+            keyRow.classList.toggle('expanded');
+        } else if (copyBtn) {
+            copyToClipboard(keyRow.dataset.value);
+        } else if (favoriteBtn) {
+            await updateKey(keyToModify.id, { favorite: !keyToModify.favorite });
+        } else if (deleteBtn) {
+            showModal(deleteConfirmModal);
+        } else if (checkBtn) {
+            runAdvancedCheck(keyToModify);
+        } else if (settingsBtn) {
+            showSettingsModal(keyToModify);
+        } else if (moveUpBtn) {
+            await handleMove(keyToModify.id, 'up');
+        } else if (moveDownBtn) {
+            await handleMove(keyToModify.id, 'down');
         }
+    });
 
-        function updateCardStatus(row, status, message) {
-            const statusDot = row.querySelector('.status-dot');
-            const statusText = row.querySelector('.card-status-text');
-            statusDot.className = 'status-dot flex-shrink-0';
-            statusDot.classList.add(`status-${status || 'unknown'}`);
-            statusText.textContent = message || 'Chưa kiểm tra';
-        }
-
-        function detectApiKeyType(key) {
-            for (const type in API_PROVIDERS) {
-                if (API_PROVIDERS[type].regex.test(key)) {
-                    if (type === 'openai' && API_PROVIDERS['stability-ai'].regex.test(key)) continue; 
-                    return type;
-                }
-            }
-            return 'unknown';
-        }
-
-        // Loại bỏ validateForm cũ, giờ sử dụng validateModalForm
-        // apiKeyInput.addEventListener('input', validateForm);
-        // keyNameInput.addEventListener('input', validateForm);
-
-        // Loại bỏ addKeyBtn cũ, giờ sử dụng modalAddKeyBtn
-        // addKeyBtn.addEventListener('click', async () => { ... });
+    keyGroupsContainer.addEventListener('focusout', async (e) => {
+        const keyRow = e.target.closest('.key-row');
+        if (!keyRow) return;
         
-        function copyToClipboard(text) {
-            const textArea = document.createElement('textarea');
-            textArea.value = text;
-            textArea.style.position = 'fixed';
-            textArea.style.left = '-9999px';
-            document.body.appendChild(textArea);
-            textArea.select();
-            try {
-                document.execCommand('copy');
-                showToast('Đã sao chép vào clipboard!');
-            } catch (err) {
-                showToast('Lỗi: Không thể sao chép!');
-            }
-            document.body.removeChild(textArea);
-        }
+        const keyToUpdate = allLoadedKeys.find(k => k.id === keyRow.dataset.id);
+        if (!keyToUpdate) return;
         
-        async function handleMove(keyId, direction) {
-            const keyToMove = allLoadedKeys.find(k => k.id === keyId);
-            if (!keyToMove) return;
-            const siblingKeys = allLoadedKeys
-                .filter(k => k.type === keyToMove.type && k.favorite === keyToMove.favorite)
-                .sort((a, b) => a.order - b.order);
-            const currentIndex = siblingKeys.findIndex(k => k.id === keyId);
-            let adjacentIndex = -1;
-            if (direction === 'up' && currentIndex > 0) {
-                adjacentIndex = currentIndex - 1;
-            } else if (direction === 'down' && currentIndex < siblingKeys.length - 1) {
-                adjacentIndex = currentIndex + 1;
+        if (e.target.matches('.card-notes')) {
+            const newNotes = e.target.value;
+            if (newNotes !== (keyToUpdate.notes || '')) {
+                await updateKey(keyToUpdate.id, { notes: newNotes });
             }
-            if (adjacentIndex !== -1) {
-                const adjacentKey = siblingKeys[adjacentIndex];
-                const tempOrder = keyToMove.order;
-                keyToMove.order = adjacentKey.order;
-                adjacentKey.order = tempOrder;
-                renderKeys(allLoadedKeys);
-                showToast('Đang lưu thay đổi vị trí...');
-                try {
-                    await Promise.all([
-                        updateKey(keyToMove.id, { order: keyToMove.order }),
-                        updateKey(adjacentKey.id, { order: adjacentKey.order })
-                    ]);
-                } catch (error) {
-                    showToast(`Lỗi sắp xếp: ${error.message}. Đang hoàn tác...`);
-                    await loadKeys();
-                }
+        } else if (e.target.matches('.card-name')) {
+            const newName = e.target.textContent.trim();
+            if (newName && newName !== keyToUpdate.name) {
+                await updateKey(keyToUpdate.id, { name: newName });
+            } else if (!newName) {
+                e.target.textContent = keyToUpdate.name; // Restore if empty
             }
         }
-        
-        async function updateKey(keyId, updatedData) {
-            const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
-            if (!keyToUpdate) {
-                console.error("Key not found for update:", keyId);
-                return;
-            }
-            const payload = {
-                name: updatedData.name !== undefined ? updatedData.name : keyToUpdate.name,
-                notes: updatedData.notes !== undefined ? updatedData.notes : keyToUpdate.notes,
-                favorite: updatedData.favorite !== undefined ? updatedData.favorite : keyToUpdate.favorite,
-                order: updatedData.order !== undefined ? updatedData.order : keyToUpdate.order,
-            };
-            try {
-                await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify(payload) });
-                Object.assign(keyToUpdate, payload); // Cập nhật local state
-                renderKeys(allLoadedKeys); // Render lại để đảm bảo UI đồng bộ
-                showToast('Đã lưu thay đổi.');
-            } catch (error) {
-                showToast(`Lỗi cập nhật: ${error.message}. Đang khôi phục...`);
-                await loadKeys(); // Tải lại toàn bộ nếu có lỗi
-            }
-        }
+    });
 
-        keyGroupsContainer.addEventListener('click', async (e) => {
-            const checkGroupBtn = e.target.closest('.check-group-btn');
-            if (checkGroupBtn) {
-                const groupDiv = checkGroupBtn.closest('.bg-white');
-                const groupType = groupDiv.dataset.type;
-                setButtonLoading(checkGroupBtn, true);
-                const allKeyRowsInGroup = groupDiv.querySelectorAll('.key-row');
-                for (const row of allKeyRowsInGroup) {
-                    await checkKeyStatus(row, row.dataset.value, row.dataset.type);
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                }
-                setButtonLoading(checkGroupBtn, false);
-                showToast(`Đã hoàn tất kiểm tra tất cả các key của nhóm ${API_PROVIDERS[groupType]?.name || groupType}.`);
-                return;
-            }
-            const row = e.target.closest('.key-row');
-            if (!row) return;
-            const keyId = row.dataset.id;
-            const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
-            if (!keyToUpdate) return;
+    // --- Modal Handling ---
+    function showModal(modal) {
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.querySelector('.modal-content').classList.remove('scale-95');
+            modal.classList.remove('opacity-0');
+        }, 10);
+    }
 
-            // Xử lý sự kiện click nút thu gọn/mở rộng
-            if (e.target.closest('.toggle-details-btn')) {
-                row.classList.toggle('expanded-row');
-                row.classList.toggle('collapsed-row');
-                e.preventDefault(); // Ngăn chặn các sự kiện khác
-                return; // Thoát khỏi hàm để không xử lý các sự kiện khác trên hàng
-            }
+    function hideModal(modal) {
+        modal.querySelector('.modal-content').classList.add('scale-95');
+        modal.classList.add('opacity-0');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+        keyToModify = null; // Clear context
+    }
 
-            if (e.target.closest('.favorite-btn')) {
-                await updateKey(keyId, { favorite: !keyToUpdate.favorite });
-            } else if (e.target.closest('.copy-btn')) {
-                copyToClipboard(row.dataset.value);
-            } else if (e.target.closest('.delete-btn')) {
-                showDeleteConfirmModal(keyId);
-            } else if (e.target.closest('.check-btn')) {
-                const result = await checkKeyStatus(row, row.dataset.value, row.dataset.type);
-                showStatusModal(result);
-            } else if (e.target.closest('.move-up-btn')) {
-                await handleMove(keyId, 'up');
-            } else if (e.target.closest('.move-down-btn')) {
-                await handleMove(keyId, 'down');
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal || e.target.closest('.close-modal-btn')) {
+                hideModal(modal);
             }
         });
+    });
+
+    // Add Key Modal
+    addKeyModalBtn.addEventListener('click', () => showModal(addKeyModal));
+    
+    function detectApiKeyType(key) {
+        for (const type in API_PROVIDERS) {
+            if (API_PROVIDERS[type].regex.test(key)) {
+                if (type === 'openai' && API_PROVIDERS['stability-ai'].regex.test(key)) continue; 
+                return type;
+            }
+        }
+        return 'unknown';
+    }
+
+    function validateAddKeyForm() {
+        const key = apiKeyInput.value.trim();
+        const name = keyNameInput.value.trim();
+        const type = detectApiKeyType(key);
+        detectedApiLogo.innerHTML = type !== 'unknown' ? API_PROVIDERS[type].logo : '';
+        addKeyBtn.disabled = !(key && name); // Allow unknown type
+    }
+    apiKeyInput.addEventListener('input', validateAddKeyForm);
+    keyNameInput.addEventListener('input', validateAddKeyForm);
+
+    addKeyBtn.addEventListener('click', async () => {
+        const newKey = {
+            id: crypto.randomUUID(),
+            name: keyNameInput.value.trim(),
+            value: apiKeyInput.value.trim(),
+            type: detectApiKeyType(apiKeyInput.value.trim()),
+            notes: '',
+            favorite: false,
+            order: Date.now(),
+            created_at: new Date().toISOString(),
+            checkConfig: null // Initialize with no custom config
+        };
+        try {
+            await apiFetch('/api/keys', { method: 'POST', body: JSON.stringify(newKey) });
+            showToast("Đã thêm key thành công!");
+            apiKeyInput.value = ''; keyNameInput.value = '';
+            validateAddKeyForm();
+            hideModal(addKeyModal);
+            await loadKeys();
+        } catch (error) {
+            showToast(`Lỗi: ${error.message}`);
+        }
+    });
+
+    // Delete Confirm Modal
+    document.querySelector('.cancel-delete-btn').addEventListener('click', () => hideModal(deleteConfirmModal));
+    document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
+        if (!keyToModify) return;
+        try {
+            await apiFetch(`/api/keys/${keyToModify.id}`, { method: 'DELETE' });
+            showToast('Đã xóa key.');
+            await loadKeys();
+        } catch (error) {
+            showToast(`Lỗi xóa key: ${error.message}`);
+        } finally {
+            hideModal(deleteConfirmModal);
+        }
+    });
+
+
+    // --- Advanced Check Logic (from api-check-b.html) ---
+    async function runAdvancedCheck(key) {
+        isChecking = true;
+        keyToModify = key;
+        const keyConfig = key.checkConfig || CHECK_PROVIDERS_CONFIG[key.type] || CHECK_PROVIDERS_CONFIG['unknown'];
+        const requestCount = keyConfig.requestCount || 20;
+
+        showModal(checkStatusModal);
+        checkStatusDots.innerHTML = '';
+        checkStatusLog.innerHTML = '';
+
+        logToCheckModal('Bắt đầu kiểm tra...', 'text-yellow-300');
         
-        keyGroupsContainer.addEventListener('focusout', async (e) => {
-            const row = e.target.closest('.key-row');
-            if (!row) return;
-            const keyId = row.dataset.id;
-            const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
-            if (!keyToUpdate) return;
-            if (e.target.matches('.card-notes')) {
-                const newNotes = e.target.value;
-                if (newNotes !== (keyToUpdate.notes || '')) {
-                    await updateKey(keyId, { notes: newNotes });
-                }
-            } 
-            else if (e.target.matches('.card-name')) {
-                const newName = e.target.textContent.trim();
-                if (newName && newName !== keyToUpdate.name) {
-                    await updateKey(keyId, { name: newName });
-                } else if (!newName) {
-                    e.target.textContent = keyToUpdate.name;
-                }
-            }
-        });
-
-        keyGroupsContainer.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && (e.target.matches('.card-name') || e.target.matches('.card-notes'))) {
-                e.preventDefault();
-                e.target.blur();
-            }
-        });
-
-        function showDeleteConfirmModal(keyId) {
-            keyIdToDelete = keyId;
-            deleteConfirmModal.classList.remove('hidden');
+        for (let i = 0; i < requestCount; i++) {
+            const dot = document.createElement('div');
+            dot.id = `status-dot-${i}`;
+            dot.className = 'status-dot status-pending';
+            dot.title = `Yêu cầu ${i + 1}: Đang chờ`;
+            checkStatusDots.appendChild(dot);
         }
 
-        function hideDeleteConfirmModal() {
-            keyIdToDelete = null;
-            deleteConfirmModal.classList.add('hidden');
+        const finalUrl = keyConfig.authType === 'url' ? keyConfig.url + key.value : keyConfig.url;
+        const headers = { 'Content-Type': 'application/json' };
+        if (keyConfig.authType === 'bearer') {
+            headers['Authorization'] = `Bearer ${key.value}`;
         }
 
-        cancelDeleteBtn.addEventListener('click', hideDeleteConfirmModal);
-        confirmDeleteBtn.addEventListener('click', async () => {
-            if (!keyIdToDelete) return;
+        const requestOptions = {
+            method: keyConfig.method || 'POST',
+            headers: headers,
+            provider: key.type
+        };
+
+        if (requestOptions.method !== 'GET' && keyConfig.body) {
+            requestOptions.body = JSON.stringify(keyConfig.body);
+        }
+
+        for (let i = 0; i < requestCount; i++) {
+            if (!isChecking) {
+                logToCheckModal('Quá trình kiểm tra đã được người dùng dừng lại.', 'text-yellow-300');
+                break;
+            }
+            await sendSingleRequest(i, finalUrl, requestOptions);
+        }
+        isChecking = false;
+        logToCheckModal('Hoàn tất kiểm tra.', 'text-green-300');
+    }
+
+    async function sendSingleRequest(index, url, options) {
+        const dot = document.getElementById(`status-dot-${index}`);
+        let retries = 0;
+        const maxRetries = 3;
+
+        while (retries <= maxRetries) {
             try {
-                await apiFetch(`/api/keys/${keyIdToDelete}`, { method: 'DELETE' });
-                showToast('Đã xóa key.');
-                await loadKeys();
-            } catch (error) {
-                showToast(`Lỗi xóa key: ${error.message}`);
-            } finally {
-                hideDeleteConfirmModal();
-            }
-        });
+                const response = await fetch(url, options);
+                const statusText = `Yêu cầu ${index + 1}: Status ${response.status} ${response.statusText}`;
+                dot.title = statusText;
 
-        function showStatusModal(result) {
-            const { status, title, message, advice } = result;
-            const modalTitle = statusDetailsModal.querySelector('#modal-title');
-            const modalStatus = statusDetailsModal.querySelector('#modal-status');
-            const modalMessage = statusDetailsModal.querySelector('#modal-message');
-            const modalAdvice = statusDetailsModal.querySelector('#modal-advice');
-            const modalHeader = statusDetailsModal.querySelector('#modal-header');
-            modalHeader.className = 'flex justify-between items-center p-4 border-b rounded-t-lg';
-            modalTitle.className = 'text-xl font-bold';
-            modalTitle.textContent = title;
-            modalStatus.textContent = title;
-            modalMessage.textContent = message;
-            modalAdvice.textContent = advice;
-            switch(status) {
-                case 'active': modalHeader.classList.add('bg-green-100', 'text-green-800'); break;
-                case 'limited': modalHeader.classList.add('bg-yellow-100', 'text-yellow-800'); break;
-                case 'invalid': modalHeader.classList.add('bg-red-100', 'text-red-800'); break;
-                default: modalHeader.classList.add('bg-gray-100', 'text-gray-800');
-            }
-            statusDetailsModal.classList.remove('hidden');
-        }
-
-        closeModalBtn.addEventListener('click', () => statusDetailsModal.classList.add('hidden'));
-
-        function setButtonLoading(btn, isLoading) {
-            const btnText = btn.querySelector('.btn-text');
-            const loader = btn.querySelector('.loader');
-            btn.disabled = isLoading;
-            if (isLoading) {
-                if(btnText) btnText.classList.add('hidden');
-                if(loader) loader.classList.remove('hidden');
-            } else {
-                if(btnText) btnText.classList.remove('hidden');
-                if(loader) loader.classList.add('hidden');
-            }
-        }
-        
-        // Hàm kiểm tra key mới, gọi backend
-        async function checkKeyStatus(row, key, type) {
-            const checkBtn = row.querySelector('.check-btn');
-            setButtonLoading(checkBtn, true);
-            updateCardStatus(row, 'checking', 'Đang kiểm tra...');
-            let result;
-            try {
-                // Giả lập cuộc gọi backend để kiểm tra key
-                // Trong thực tế, bạn sẽ gửi key và type đến backend của mình
-                // Backend sẽ gọi API của nhà cung cấp (Google, OpenAI,...) và trả về kết quả
-                const backendResponse = await fetch(`${BACKEND_URL}/api/check-key`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${idToken}`
-                    },
-                    body: JSON.stringify({ key, type })
-                });
-
-                if (backendResponse.ok) {
-                    result = await backendResponse.json();
+                if (response.ok) {
+                    dot.className = 'status-dot status-success';
+                    logToCheckModal(statusText, 'text-green-400');
+                } else if (response.status === 429) {
+                    dot.className = 'status-dot status-limited';
+                    logToCheckModal(statusText, 'text-red-400');
+                } else if (response.status === 503 && options.provider === 'hugging-face' && retries < maxRetries) {
+                    const responseData = await response.json();
+                    const estimatedTime = responseData.estimated_time || 5;
+                    dot.className = 'status-dot status-loading';
+                    const waitMsg = `Yêu cầu ${index + 1}: Model đang tải (503). Thử lại sau ${estimatedTime.toFixed(1)}s...`;
+                    dot.title = waitMsg;
+                    logToCheckModal(waitMsg, 'text-yellow-400');
+                    await new Promise(resolve => setTimeout(resolve, (estimatedTime + 0.5) * 1000));
+                    retries++;
+                    continue; // Skip to next iteration of the while loop
                 } else {
-                    const errorData = await backendResponse.json();
-                    result = { 
-                        status: 'invalid', 
-                        title: `Lỗi Backend (${backendResponse.status})`, 
-                        message: errorData.error || 'Có lỗi xảy ra khi kiểm tra key từ backend.', 
-                        advice: 'Vui lòng kiểm tra log backend hoặc liên hệ quản trị viên.' 
-                    };
+                    dot.className = 'status-dot status-error';
+                    logToCheckModal(statusText, 'text-orange-400');
                 }
+                return; // Exit the while loop and function
             } catch (error) {
-                result = { status: 'invalid', title: 'Lỗi Kết Nối', message: error.message, advice: 'Kiểm tra kết nối mạng của bạn hoặc URL backend.' };
-                console.error(`Error checking ${type} key via backend:`, error);
+                dot.className = 'status-dot status-error';
+                const errorMsg = `Yêu cầu ${index + 1}: Lỗi mạng - ${error.message}`;
+                dot.title = errorMsg;
+                logToCheckModal(errorMsg, 'text-orange-400');
+                return; // Exit on network error
             }
-            setButtonLoading(checkBtn, false);
-            updateCardStatus(row, result.status, result.title);
-            return result;
         }
-        
-        // Loại bỏ các hàm kiểm tra key riêng lẻ (checkGoogleKey, checkStabilityKey, checkHuggingFaceKey, checkOpenAIKey)
-        // Vì giờ đây chúng ta sẽ gọi một endpoint chung từ backend.
-        /*
-        async function getErrorMessage(response) { ... }
-        async function checkGoogleKey(key) { ... }
-        async function checkStabilityKey(key) { ... }
-        async function checkHuggingFaceKey(key) { ... }
-        async function checkOpenAIKey(key) { ... }
-        */
+        // This part is reached only if all retries for 503 error fail
+        dot.className = 'status-dot status-error';
+        const failMsg = `Yêu cầu ${index + 1}: Thất bại sau ${maxRetries} lần thử lại.`;
+        dot.title = failMsg;
+        logToCheckModal(failMsg, 'text-orange-400');
+    }
 
-        checkAllBtn.addEventListener('click', async () => {
-            const checkAllBtnText = document.getElementById('check-all-btn-text');
-            const checkAllLoader = document.getElementById('check-all-loader');
-            checkAllBtn.disabled = true;
-            checkAllBtnText.classList.add('hidden');
-            checkAllLoader.classList.remove('hidden');
-            const allKeyRows = document.querySelectorAll('.key-row');
-            for (const row of allKeyRows) {
-                await checkKeyStatus(row, row.dataset.value, row.dataset.type);
-                await new Promise(resolve => setTimeout(resolve, 300));
+    stopCheckBtn.addEventListener('click', () => {
+        isChecking = false;
+    });
+
+    function logToCheckModal(message, colorClass = 'text-slate-400') {
+        const logEntry = document.createElement('p');
+        logEntry.className = colorClass;
+        logEntry.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+        if (checkStatusLog.firstChild && checkStatusLog.firstChild.textContent.includes('Nhật ký yêu cầu')) {
+            checkStatusLog.innerHTML = '';
+        }
+        checkStatusLog.appendChild(logEntry);
+        checkStatusLog.scrollTop = checkStatusLog.scrollHeight;
+    }
+    
+    // --- Check Settings Modal Logic ---
+    function showSettingsModal(key) {
+        keyToModify = key;
+        const config = key.checkConfig || CHECK_PROVIDERS_CONFIG[key.type] || CHECK_PROVIDERS_CONFIG['unknown'];
+        
+        // Populate provider select
+        settingsProviderSelect.innerHTML = '';
+        Object.keys(CHECK_PROVIDERS_CONFIG).forEach(providerKey => {
+            const option = document.createElement('option');
+            option.value = providerKey;
+            option.textContent = CHECK_PROVIDERS_CONFIG[providerKey].name;
+            if (providerKey === key.type) {
+                option.selected = true;
             }
-            checkAllBtn.disabled = false;
-            checkAllBtnText.classList.remove('hidden');
-            checkAllLoader.classList.add('hidden');
-            showToast("Đã hoàn tất kiểm tra tất cả các key.");
+            settingsProviderSelect.appendChild(option);
         });
 
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.classList.add('show');
-            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        settingsUrlInput.value = config.url || '';
+        settingsRequestsInput.value = config.requestCount || 20;
+        settingsBodyTextarea.value = config.body ? JSON.stringify(config.body, null, 2) : '';
+        
+        showModal(checkSettingsModal);
+    }
+    
+    settingsProviderSelect.addEventListener('change', () => {
+        const selectedProviderKey = settingsProviderSelect.value;
+        const defaultConfig = CHECK_PROVIDERS_CONFIG[selectedProviderKey];
+        if(defaultConfig) {
+            settingsUrlInput.value = defaultConfig.url || '';
+            settingsBodyTextarea.value = defaultConfig.body ? JSON.stringify(defaultConfig.body, null, 2) : '';
         }
+    });
+
+    saveSettingsBtn.addEventListener('click', async () => {
+        if (!keyToModify) return;
+        let body;
+        try {
+            body = settingsBodyTextarea.value ? JSON.parse(settingsBodyTextarea.value) : null;
+        } catch (e) {
+            showToast("Lỗi: JSON trong Request Body không hợp lệ.");
+            return;
+        }
+
+        const newCheckConfig = {
+            url: settingsUrlInput.value,
+            requestCount: parseInt(settingsRequestsInput.value, 10),
+            body: body,
+            authType: CHECK_PROVIDERS_CONFIG[keyToModify.type]?.authType || 'bearer',
+            method: CHECK_PROVIDERS_CONFIG[keyToModify.type]?.method || 'POST'
+        };
+
+        await updateKey(keyToModify.id, { checkConfig: newCheckConfig });
+        hideModal(checkSettingsModal);
+    });
+    
+    resetSettingsBtn.addEventListener('click', async () => {
+        if (!keyToModify) return;
+        // Setting checkConfig to null will make the app use the default config
+        await updateKey(keyToModify.id, { checkConfig: null });
+        hideModal(checkSettingsModal);
+    });
+
+    // --- General Functions & Helpers ---
+    async function updateKey(keyId, updatedData) {
+        const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
+        if (!keyToUpdate) return;
+
+        // Create payload with only the fields that can be updated
+        const payload = {};
+        if (updatedData.name !== undefined) payload.name = updatedData.name;
+        if (updatedData.notes !== undefined) payload.notes = updatedData.notes;
+        if (updatedData.favorite !== undefined) payload.favorite = updatedData.favorite;
+        if (updatedData.order !== undefined) payload.order = updatedData.order;
+        if (updatedData.checkConfig !== undefined) payload.checkConfig = updatedData.checkConfig;
+
+        try {
+            await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify(payload) });
+            Object.assign(keyToUpdate, updatedData); // Update local state
+            renderKeys(allLoadedKeys);
+            showToast('Đã lưu thay đổi.');
+        } catch (error) {
+            showToast(`Lỗi cập nhật: ${error.message}. Đang khôi phục...`);
+            await loadKeys(); // Reload all on error
+        }
+    }
+    
+    async function handleMove(keyId, direction) {
+        // This function needs to be adapted for the new data structure if needed
+        // For now, it should work as expected.
+        const keyToMove = allLoadedKeys.find(k => k.id === keyId);
+        if (!keyToMove) return;
+
+        const siblingKeys = allLoadedKeys
+            .filter(k => k.type === keyToMove.type && k.favorite === keyToMove.favorite)
+            .sort((a, b) => a.order - b.order);
+        
+        const currentIndex = siblingKeys.findIndex(k => k.id === keyId);
+        let adjacentIndex = -1;
+        if (direction === 'up' && currentIndex > 0) {
+            adjacentIndex = currentIndex - 1;
+        } else if (direction === 'down' && currentIndex < siblingKeys.length - 1) {
+            adjacentIndex = currentIndex + 1;
+        }
+
+        if (adjacentIndex !== -1) {
+            const adjacentKey = siblingKeys[adjacentIndex];
+            // Swap order values
+            const tempOrder = keyToMove.order;
+            keyToMove.order = adjacentKey.order;
+            adjacentKey.order = tempOrder;
+
+            renderKeys(allLoadedKeys.sort((a, b) => a.order - b.order));
+            showToast('Đang lưu thay đổi vị trí...');
+
+            try {
+                await Promise.all([
+                    updateKey(keyToMove.id, { order: keyToMove.order }),
+                    updateKey(adjacentKey.id, { order: adjacentKey.order })
+                ]);
+            } catch (error) {
+                showToast(`Lỗi sắp xếp: ${error.message}. Đang hoàn tác...`);
+                await loadKeys();
+            }
+        }
+    }
+
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('Đã sao chép vào clipboard!');
+        }, () => {
+            showToast('Lỗi: Không thể sao chép!');
+        });
+    }
+
+    function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimeout(() => { toast.classList.remove('show'); }, 3000);
+    }
     </script>
 </body>
 </html>
