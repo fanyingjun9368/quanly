@@ -302,11 +302,12 @@
         'stability-ai': { name: 'Stability AI', regex: /^sk-[A-Za-z0-9]{40,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-purple-500"><path d="M12 2L9.429 9.429 2 12l7.429 2.571L12 22l2.571-7.429L22 12l-7.429-2.571z"/></svg>` },
     };
     
+    // --- FIX: Updated check configurations to match the working file ---
     const CHECK_PROVIDERS_CONFIG = {
-        'google-ai': { name: 'Google Gemini', url: 'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=', body: { content: { parts: [{ text: "Kiểm tra giới hạn" }] } }, authType: 'url' },
+        'google-ai': { name: 'Google Gemini', url: 'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=', body: { content: { parts: [{ text: "Xin chào thế giới" }] } }, authType: 'url' },
         'openai': { name: 'OpenAI', url: 'https://api.openai.com/v1/chat/completions', body: { model: "gpt-3.5-turbo", messages: [{role: "user", content: "Say this is a test"}]}, authType: 'bearer' },
         'hugging-face': { name: 'Hugging Face', url: 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0', body: { inputs: ["Kiểm tra giới hạn API"] }, authType: 'bearer' },
-        'stability-ai': { name: 'Stability AI', url: 'https://api.stability.ai/v1/user/balance', method: 'GET', body: null, authType: 'bearer' },
+        'stability-ai': { name: 'Stability AI', url: 'https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image', body: { text_prompts: [{ text: "A lighthouse on a cliff" }] }, authType: 'bearer' },
         'unknown': { name: 'Unknown/Custom', url: '', body: {}, authType: 'bearer' }
     };
 
@@ -324,8 +325,21 @@
         if (response.status === 204) return null;
         return response.json();
     }
-
-    function decodeJwtPayload(token) { try { return JSON.parse(atob(token.split('.')[1])); } catch (e) { return null; } }
+    
+    // --- FIX: Replaced with robust UTF-8 decoding function ---
+    function decodeJwtPayload(token) {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (e) {
+            console.error("Error decoding JWT", e);
+            return null;
+        }
+    }
 
     function initializeAuthenticatedApp(token) {
         idToken = token;
