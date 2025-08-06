@@ -17,7 +17,7 @@
         .status-error { background-color: #f97316; }
         .status-loading { background-color: #eab308; }
         .status-unknown, .status-pending { background-color: #9ca3af; }
-        .status-checking { background-color: #3b82f6; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .status-checking { background-color: #3b82f6; animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
         
         .toast { visibility: hidden; opacity: 0; transition: visibility 0s 0.5s, opacity 0.5s linear; }
@@ -36,7 +36,6 @@
         .modal-overlay { transition: opacity 0.3s ease; }
         .modal-content { transition: transform 0.3s ease; }
 
-        /* Styles for collapsible rows */
         .key-details {
             max-height: 0;
             overflow: hidden;
@@ -45,22 +44,28 @@
             padding-bottom: 0;
         }
         .key-row.expanded .key-details {
-            max-height: 500px; /* Adjust as needed */
+            max-height: 500px;
             padding-top: 1rem;
             padding-bottom: 1rem;
         }
-        .key-row.expanded .expand-icon {
-            transform: rotate(180deg);
-        }
-        .expand-icon {
-            transition: transform 0.3s ease;
-        }
+        .key-row.expanded .expand-icon { transform: rotate(180deg); }
+        .expand-icon { transition: transform 0.3s ease; }
 
-        /* Custom scrollbar for modals */
         .modal-body::-webkit-scrollbar { width: 6px; }
         .modal-body::-webkit-scrollbar-track { background: #f1f5f9; }
         .modal-body::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
         .modal-body::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        /* Mobile-specific UI tweaks */
+        @media (max-width: 640px) {
+            #user-name {
+                display: none;
+            }
+            .action-btn {
+                width: 2.25rem; /* 36px */
+                height: 2.25rem; /* 36px */
+            }
+        }
     </style>
 </head>
 <body class="bg-[#fffbbe] text-gray-800">
@@ -94,21 +99,19 @@
         </div>
 
         <main id="app-content" class="hidden">
-            <!-- Vùng hiển thị các nhóm API key -->
             <div id="key-groups-container" class="space-y-6">
-                <!-- Các nhóm API key sẽ được render ở đây -->
+                <!-- Key groups will be rendered here -->
             </div>
         </main>
     </div>
 
     <!-- Template cho hàng API key (Collapsible) -->
     <template id="key-row-template">
-        <div class="key-row bg-white rounded-xl shadow-md p-4" data-id="" data-value="" data-type="" data-favorite="" data-order="">
-            <!-- Phần tóm tắt luôn hiển thị -->
+        <div class="key-row bg-white rounded-xl shadow-md p-4" data-id="" data-value="" data-type="">
             <div class="key-summary flex items-center justify-between cursor-pointer">
                 <div class="flex items-center gap-3 flex-grow min-w-0">
                     <div class="status-dot"></div>
-                    <span class="card-name font-semibold text-gray-800 truncate"></span>
+                    <span class="card-name font-semibold text-gray-800 truncate" contenteditable="true"></span>
                 </div>
                 <div class="flex items-center gap-3 flex-shrink-0">
                      <button title="Sao chép key" class="copy-btn p-2 text-gray-500 hover:text-indigo-600 rounded-lg hover:bg-gray-100 transition-colors">
@@ -119,7 +122,6 @@
                     </button>
                 </div>
             </div>
-            <!-- Phần chi tiết có thể thu gọn -->
             <div class="key-details border-t border-gray-200 mt-4">
                 <div class="space-y-4">
                     <div>
@@ -147,10 +149,9 @@
     </template>
     
     <!-- MODALS -->
-
     <!-- Modal: Thêm Key Mới -->
     <div id="add-key-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-40">
-        <div class="modal-content bg-white rounded-xl shadow-xl p-6 w-full max-w-lg transform scale-95">
+        <div class="modal-content bg-white rounded-xl shadow-xl p-6 w-full max-w-lg transform scale-95 opacity-0">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-semibold text-gray-900">Thêm Key Mới</h2>
                 <button class="close-modal-btn text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
@@ -176,7 +177,7 @@
 
     <!-- Modal: Xác nhận Xóa -->
     <div id="delete-confirm-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-        <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform scale-95">
+        <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform scale-95 opacity-0">
             <h3 class="text-lg font-bold text-gray-900 mb-4">Xác nhận xóa</h3>
             <p class="text-gray-600 mb-6">Bạn có chắc chắn muốn xóa API key này không? Hành động này không thể hoàn tác.</p>
             <div class="flex justify-end space-x-4">
@@ -188,7 +189,7 @@
     
     <!-- Modal: Chi tiết Trạng thái API (Kiểm tra nâng cao) -->
     <div id="check-status-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-2xl transform scale-95 flex flex-col" style="height: 90vh; max-height: 700px;">
+        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-2xl transform scale-95 opacity-0 flex flex-col" style="height: 90vh; max-height: 700px;">
             <div class="flex justify-between items-center p-4 border-b rounded-t-lg bg-gray-50">
                 <h3 class="text-xl font-bold">Kết quả Kiểm tra Nâng cao</h3>
                 <button class="close-modal-btn text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
@@ -196,15 +197,11 @@
             <div class="p-5 overflow-y-auto modal-body space-y-4">
                 <div>
                      <h4 class="text-lg font-semibold mb-3 text-slate-900">Kết quả Trực quan</h4>
-                    <div id="check-status-dots" class="grid grid-cols-10 md:grid-cols-15 lg:grid-cols-20 gap-3 p-4 bg-slate-100 rounded-lg">
-                        <!-- Dots go here -->
-                    </div>
+                    <div id="check-status-dots" class="grid grid-cols-10 md:grid-cols-15 lg:grid-cols-20 gap-3 p-4 bg-slate-100 rounded-lg"></div>
                 </div>
                 <div>
                     <h4 class="text-lg font-semibold mb-3 text-slate-900">Nhật ký</h4>
-                    <div id="check-status-log" class="font-mono text-sm space-y-2 bg-slate-800 text-white p-4 rounded-lg h-64 overflow-y-auto">
-                        <p class="text-slate-400">Nhật ký yêu cầu sẽ xuất hiện ở đây...</p>
-                    </div>
+                    <div id="check-status-log" class="font-mono text-sm space-y-2 bg-slate-800 text-white p-4 rounded-lg h-64 overflow-y-auto"></div>
                 </div>
             </div>
              <div class="p-4 border-t mt-auto">
@@ -215,7 +212,7 @@
 
     <!-- Modal: Cài đặt Kiểm tra -->
     <div id="check-settings-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-lg transform scale-95">
+        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-lg transform scale-95 opacity-0">
              <div class="flex justify-between items-center p-4 border-b">
                 <h3 class="text-xl font-bold">Cài đặt Kiểm tra Nâng cao</h3>
                 <button class="close-modal-btn text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
@@ -255,8 +252,8 @@
     const BACKEND_URL = 'https://quanly-backen.onrender.com';
     let idToken = null;
     let allLoadedKeys = [];
-    let keyToModify = null; // Dùng cho các modal
-    let isChecking = false; // Cờ để dừng quá trình kiểm tra
+    let keyToModify = null;
+    let isChecking = false;
 
     // --- DOM Elements ---
     const appHeader = document.getElementById('app-header');
@@ -297,109 +294,43 @@
     const saveSettingsBtn = document.querySelector('.save-settings-btn');
     const resetSettingsBtn = document.querySelector('.reset-settings-btn');
 
-
     // --- Cấu hình API Providers ---
     const API_PROVIDERS = {
-        'google-ai': { 
-            name: 'Google AI (Gemini)', 
-            regex: /^AIzaSy[A-Za-z0-9_-]{33}$/, 
-            logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-blue-500"><path d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.18,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.18,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.18,22C17.6,22 21.54,18.33 21.54,12.81C21.54,11.76 21.45,11.44 21.35,11.1Z"/></svg>`,
-        },
-        'openai': { 
-            name: 'OpenAI', 
-            regex: /^sk-[A-Za-z0-9]{20,}/, 
-            logo: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-teal-500"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>`,
-        },
-        'hugging-face': { 
-            name: 'Hugging Face', 
-            regex: /^hf_[A-Za-z0-9]{30,}/, 
-            logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-yellow-500"><path d="M20.25 14.183C20.25 13.202 19.431 12.383 18.45 12.383C17.469 12.383 16.65 13.202 16.65 14.183C16.65 15.164 17.469 15.983 18.45 15.983C19.431 15.983 20.25 15.164 20.25 14.183ZM15.15 14.183C15.15 13.202 14.331 12.383 13.35 12.383C12.369 12.383 11.55 13.202 11.55 14.183C11.55 15.164 12.369 15.983 13.35 15.983C14.331 15.983 15.15 15.164 15.15 14.183ZM12 2C17.523 2 22 6.477 22 12C22 17.523 17.523 22 12 22C6.477 22 2 17.523 2 12C2 6.477 6.477 2 12 2ZM12 4C7.582 4 4 7.582 4 12C4 16.418 7.582 20 12 20C16.418 20 20 16.418 20 12C20 7.582 16.418 4 12 4ZM8.85 14.183C8.85 13.202 8.031 12.383 7.05 12.383C6.069 12.383 5.25 13.202 5.25 14.183C5.25 15.164 6.069 15.983 7.05 15.983C8.031 15.983 8.85 15.164 8.85 14.183Z"/></svg>`,
-        },
-        'stability-ai': { 
-            name: 'Stability AI', 
-            regex: /^sk-[A-Za-z0-9]{40,}/, 
-            logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-purple-500"><path d="M12 2L9.429 9.429 2 12l7.429 2.571L12 22l2.571-7.429L22 12l-7.429-2.571z"/></svg>`,
-        },
+        'google-ai': { name: 'Google AI (Gemini)', regex: /^AIzaSy[A-Za-z0-9_-]{33}$/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-blue-500"><path d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.18,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.18,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.18,22C17.6,22 21.54,18.33 21.54,12.81C21.54,11.76 21.45,11.44 21.35,11.1Z"/></svg>` },
+        'openai': { name: 'OpenAI', regex: /^sk-[A-Za-z0-9]{20,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-teal-500"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>` },
+        'hugging-face': { name: 'Hugging Face', regex: /^hf_[A-Za-z0-9]{30,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-yellow-500"><path d="M20.25 14.183C20.25 13.202 19.431 12.383 18.45 12.383C17.469 12.383 16.65 13.202 16.65 14.183C16.65 15.164 17.469 15.983 18.45 15.983C19.431 15.983 20.25 15.164 20.25 14.183ZM15.15 14.183C15.15 13.202 14.331 12.383 13.35 12.383C12.369 12.383 11.55 13.202 11.55 14.183C11.55 15.164 12.369 15.983 13.35 15.983C14.331 15.983 15.15 15.164 15.15 14.183ZM12 2C17.523 2 22 6.477 22 12C22 17.523 17.523 22 12 22C6.477 22 2 17.523 2 12C2 6.477 6.477 2 12 2ZM12 4C7.582 4 4 7.582 4 12C4 16.418 7.582 20 12 20C16.418 20 20 16.418 20 12C20 7.582 16.418 4 12 4ZM8.85 14.183C8.85 13.202 8.031 12.383 7.05 12.383C6.069 12.383 5.25 13.202 5.25 14.183C5.25 15.164 6.069 15.983 7.05 15.983C8.031 15.983 8.85 15.164 8.85 14.183Z"/></svg>` },
+        'stability-ai': { name: 'Stability AI', regex: /^sk-[A-Za-z0-9]{40,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-purple-500"><path d="M12 2L9.429 9.429 2 12l7.429 2.571L12 22l2.571-7.429L22 12l-7.429-2.571z"/></svg>` },
     };
     
-    // Cấu hình kiểm tra mặc định, lấy từ api-check-b.html
     const CHECK_PROVIDERS_CONFIG = {
-        'google-ai': {
-            name: 'Google Gemini',
-            url: 'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=',
-            body: { content: { parts: [{ text: "Kiểm tra giới hạn" }] } },
-            authType: 'url'
-        },
-        'openai': {
-            name: 'OpenAI',
-            url: 'https://api.openai.com/v1/chat/completions',
-            body: { model: "gpt-3.5-turbo", messages: [{role: "user", content: "Say this is a test"}]},
-            authType: 'bearer'
-        },
-        'hugging-face': {
-            name: 'Hugging Face',
-            url: 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
-            body: { inputs: ["Kiểm tra giới hạn API"] },
-            authType: 'bearer'
-        },
-        'stability-ai': {
-            name: 'Stability AI',
-            url: 'https://api.stability.ai/v1/user/balance', // Dùng endpoint balance để check, nhẹ hơn
-            method: 'GET', // Thay đổi method
-            body: null, // Không cần body
-            authType: 'bearer'
-        },
-        'unknown': {
-            name: 'Unknown/Custom',
-            url: '',
-            body: {},
-            authType: 'bearer'
-        }
+        'google-ai': { name: 'Google Gemini', url: 'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=', body: { content: { parts: [{ text: "Kiểm tra giới hạn" }] } }, authType: 'url' },
+        'openai': { name: 'OpenAI', url: 'https://api.openai.com/v1/chat/completions', body: { model: "gpt-3.5-turbo", messages: [{role: "user", content: "Say this is a test"}]}, authType: 'bearer' },
+        'hugging-face': { name: 'Hugging Face', url: 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0', body: { inputs: ["Kiểm tra giới hạn API"] }, authType: 'bearer' },
+        'stability-ai': { name: 'Stability AI', url: 'https://api.stability.ai/v1/user/balance', method: 'GET', body: null, authType: 'bearer' },
+        'unknown': { name: 'Unknown/Custom', url: '', body: {}, authType: 'bearer' }
     };
-
 
     // --- Authentication & Initialization ---
     async function apiFetch(endpoint, options = {}) {
         if (!idToken) throw new Error("User not authenticated");
-        const fetchOptions = {
-            ...options,
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${idToken}`, 
-                ...options.headers 
-            },
-        };
-        if (!options.method || options.method.toUpperCase() === 'GET') {
-            fetchOptions.cache = 'no-store';
-        }
+        const fetchOptions = { ...options, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}`, ...options.headers } };
+        if (!options.method || options.method.toUpperCase() === 'GET') { fetchOptions.cache = 'no-store'; }
         const response = await fetch(`${BACKEND_URL}${endpoint}`, fetchOptions);
         if (!response.ok) {
             let errorMsg = `Lỗi HTTP! Mã: ${response.status}`;
-            try {
-                const errorData = await response.json();
-                errorMsg = errorData.error || JSON.stringify(errorData);
-            } catch (e) { /* ignore */ }
+            try { errorMsg = (await response.json()).error || errorMsg; } catch (e) { /* ignore */ }
             throw new Error(errorMsg);
         }
         if (response.status === 204) return null;
         return response.json();
     }
 
-    function decodeJwtPayload(token) {
-        try {
-            return JSON.parse(atob(token.split('.')[1]));
-        } catch (e) {
-            return null;
-        }
-    }
+    function decodeJwtPayload(token) { try { return JSON.parse(atob(token.split('.')[1])); } catch (e) { return null; } }
 
     function initializeAuthenticatedApp(token) {
         idToken = token;
         const userProfile = decodeJwtPayload(idToken);
-        if (!userProfile) {
-            showToast("Không thể giải mã thông tin người dùng.");
-            return;
-        }
+        if (!userProfile) { showToast("Không thể giải mã thông tin người dùng."); return; }
         userNameEl.textContent = userProfile.name;
         userAvatarEl.src = userProfile.picture;
         loginView.classList.add('hidden');
@@ -411,9 +342,8 @@
 
     window.onload = function () {
         const storedIdToken = localStorage.getItem('idToken');
-        if (storedIdToken) {
-            initializeAuthenticatedApp(storedIdToken);
-        } else {
+        if (storedIdToken) { initializeAuthenticatedApp(storedIdToken); } 
+        else {
             google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredentialResponse, auto_select: true });
             google.accounts.id.renderButton(gsiButton, { theme: "outline", size: "large", text: "signin_with", shape: "rectangular" });
         }
@@ -435,18 +365,13 @@
         google.accounts.id.renderButton(gsiButton, { theme: "outline", size: "large", text: "signin_with", shape: "rectangular" });
     });
 
-    // --- Key Management ---
+    // --- Key Management & Rendering ---
     async function loadKeys() {
         try {
             const keys = await apiFetch('/api/keys');
-            allLoadedKeys = keys.map(key => ({
-                ...key,
-                order: key.order ?? new Date(key.created_at).getTime()
-            }));
+            allLoadedKeys = keys.map(key => ({ ...key, order: key.order ?? new Date(key.created_at).getTime() }));
             renderKeys(allLoadedKeys);
-        } catch (error) {
-            showToast(`Lỗi tải keys: ${error.message}`);
-        }
+        } catch (error) { showToast(`Lỗi tải keys: ${error.message}`); }
     }
 
     function renderKeys(keysToRender) {
@@ -466,8 +391,7 @@
         const sortedProviderTypes = Object.keys(groupedKeys).sort((a, b) => {
             const indexA = providerOrder.indexOf(a);
             const indexB = providerOrder.indexOf(b);
-            if (indexA === -1) return 1;
-            if (indexB === -1) return -1;
+            if (indexA === -1) return 1; if (indexB === -1) return -1;
             return indexA - indexB;
         });
 
@@ -499,18 +423,16 @@
                     favoriteBtn.querySelector('i').classList.replace('far', 'fas');
                 }
 
-                // Add CSS classes for action buttons
                 keyRow.querySelectorAll('.action-btn').forEach(btn => {
                     btn.classList.add('w-10', 'h-10', 'rounded-lg', 'flex', 'items-center', 'justify-center', 'bg-gray-100', 'hover:bg-gray-200', 'transition');
                 });
-                
                 groupGrid.appendChild(keyRow);
             });
             keyGroupsContainer.appendChild(groupGrid);
         });
     }
     
-    // --- Event Handlers for Key Rows ---
+    // --- Event Handlers ---
     keyGroupsContainer.addEventListener('click', async (e) => {
         const keyRow = e.target.closest('.key-row');
         if (!keyRow) return;
@@ -518,30 +440,24 @@
         keyToModify = allLoadedKeys.find(k => k.id === keyRow.dataset.id);
         if (!keyToModify) return;
 
-        const expandBtn = e.target.closest('.expand-btn');
-        const copyBtn = e.target.closest('.copy-btn');
-        const favoriteBtn = e.target.closest('.favorite-btn');
-        const deleteBtn = e.target.closest('.delete-btn');
-        const checkBtn = e.target.closest('.check-btn');
-        const settingsBtn = e.target.closest('.settings-btn');
-        const moveUpBtn = e.target.closest('.move-up-btn');
-        const moveDownBtn = e.target.closest('.move-down-btn');
+        const targetClasses = e.target.closest('button')?.classList;
+        if (!targetClasses && !e.target.closest('.key-summary')) return;
 
-        if (expandBtn || e.target.closest('.key-summary') && !copyBtn) {
+        if (targetClasses?.contains('expand-btn') || (!targetClasses && e.target.closest('.key-summary'))) {
             keyRow.classList.toggle('expanded');
-        } else if (copyBtn) {
+        } else if (targetClasses?.contains('copy-btn')) {
             copyToClipboard(keyRow.dataset.value);
-        } else if (favoriteBtn) {
+        } else if (targetClasses?.contains('favorite-btn')) {
             await updateKey(keyToModify.id, { favorite: !keyToModify.favorite });
-        } else if (deleteBtn) {
+        } else if (targetClasses?.contains('delete-btn')) {
             showModal(deleteConfirmModal);
-        } else if (checkBtn) {
+        } else if (targetClasses?.contains('check-btn')) {
             runAdvancedCheck(keyToModify);
-        } else if (settingsBtn) {
+        } else if (targetClasses?.contains('settings-btn')) {
             showSettingsModal(keyToModify);
-        } else if (moveUpBtn) {
+        } else if (targetClasses?.contains('move-up-btn')) {
             await handleMove(keyToModify.id, 'up');
-        } else if (moveDownBtn) {
+        } else if (targetClasses?.contains('move-down-btn')) {
             await handleMove(keyToModify.id, 'down');
         }
     });
@@ -549,22 +465,27 @@
     keyGroupsContainer.addEventListener('focusout', async (e) => {
         const keyRow = e.target.closest('.key-row');
         if (!keyRow) return;
-        
         const keyToUpdate = allLoadedKeys.find(k => k.id === keyRow.dataset.id);
         if (!keyToUpdate) return;
         
-        if (e.target.matches('.card-notes')) {
-            const newNotes = e.target.value;
-            if (newNotes !== (keyToUpdate.notes || '')) {
-                await updateKey(keyToUpdate.id, { notes: newNotes });
+        const target = e.target;
+        if (target.matches('.card-notes')) {
+            if (target.value !== (keyToUpdate.notes || '')) {
+                await updateKey(keyToUpdate.id, { notes: target.value });
             }
-        } else if (e.target.matches('.card-name')) {
-            const newName = e.target.textContent.trim();
+        } else if (target.matches('.card-name')) {
+            const newName = target.textContent.trim();
             if (newName && newName !== keyToUpdate.name) {
                 await updateKey(keyToUpdate.id, { name: newName });
             } else if (!newName) {
-                e.target.textContent = keyToUpdate.name; // Restore if empty
+                target.textContent = keyToUpdate.name;
             }
+        }
+    });
+    keyGroupsContainer.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.matches('.card-name')) {
+            e.preventDefault();
+            e.target.blur();
         }
     });
 
@@ -572,33 +493,31 @@
     function showModal(modal) {
         modal.classList.remove('hidden');
         setTimeout(() => {
-            modal.querySelector('.modal-content').classList.remove('scale-95');
-            modal.classList.remove('opacity-0');
+            modal.querySelector('.modal-content').classList.remove('scale-95', 'opacity-0');
         }, 10);
     }
 
     function hideModal(modal) {
-        modal.querySelector('.modal-content').classList.add('scale-95');
-        modal.classList.add('opacity-0');
+        modal.querySelector('.modal-content').classList.add('scale-95', 'opacity-0');
         setTimeout(() => modal.classList.add('hidden'), 300);
-        keyToModify = null; // Clear context
+        keyToModify = null;
     }
 
     document.querySelectorAll('.modal-overlay').forEach(modal => {
-        modal.addEventListener('click', (e) => {
+        modal.addEventListener('click', e => {
             if (e.target === modal || e.target.closest('.close-modal-btn')) {
                 hideModal(modal);
             }
         });
     });
 
-    // Add Key Modal
+    // --- Add/Update/Delete Logic ---
     addKeyModalBtn.addEventListener('click', () => showModal(addKeyModal));
     
     function detectApiKeyType(key) {
         for (const type in API_PROVIDERS) {
             if (API_PROVIDERS[type].regex.test(key)) {
-                if (type === 'openai' && API_PROVIDERS['stability-ai'].regex.test(key)) continue; 
+                if (type === 'openai' && /sk-[a-zA-Z0-9]{48}/.test(key)) continue; // Simple check for StabilityAI key format
                 return type;
             }
         }
@@ -610,7 +529,7 @@
         const name = keyNameInput.value.trim();
         const type = detectApiKeyType(key);
         detectedApiLogo.innerHTML = type !== 'unknown' ? API_PROVIDERS[type].logo : '';
-        addKeyBtn.disabled = !(key && name); // Allow unknown type
+        addKeyBtn.disabled = !(key && name);
     }
     apiKeyInput.addEventListener('input', validateAddKeyForm);
     keyNameInput.addEventListener('input', validateAddKeyForm);
@@ -621,11 +540,7 @@
             name: keyNameInput.value.trim(),
             value: apiKeyInput.value.trim(),
             type: detectApiKeyType(apiKeyInput.value.trim()),
-            notes: '',
-            favorite: false,
-            order: Date.now(),
-            created_at: new Date().toISOString(),
-            checkConfig: null // Initialize with no custom config
+            notes: '', favorite: false, order: Date.now(), checkConfig: null
         };
         try {
             await apiFetch('/api/keys', { method: 'POST', body: JSON.stringify(newKey) });
@@ -634,12 +549,9 @@
             validateAddKeyForm();
             hideModal(addKeyModal);
             await loadKeys();
-        } catch (error) {
-            showToast(`Lỗi: ${error.message}`);
-        }
+        } catch (error) { showToast(`Lỗi: ${error.message}`); }
     });
 
-    // Delete Confirm Modal
     document.querySelector('.cancel-delete-btn').addEventListener('click', () => hideModal(deleteConfirmModal));
     document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
         if (!keyToModify) return;
@@ -647,15 +559,36 @@
             await apiFetch(`/api/keys/${keyToModify.id}`, { method: 'DELETE' });
             showToast('Đã xóa key.');
             await loadKeys();
-        } catch (error) {
-            showToast(`Lỗi xóa key: ${error.message}`);
-        } finally {
-            hideModal(deleteConfirmModal);
-        }
+        } catch (error) { showToast(`Lỗi xóa key: ${error.message}`); } 
+        finally { hideModal(deleteConfirmModal); }
     });
+    
+    async function updateKey(keyId, updatedData) {
+        const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
+        if (!keyToUpdate) { console.error("Key not found:", keyId); return; }
 
+        const payload = {
+            name: keyToUpdate.name,
+            notes: keyToUpdate.notes || '',
+            favorite: keyToUpdate.favorite,
+            order: keyToUpdate.order,
+            checkConfig: keyToUpdate.checkConfig,
+            ...updatedData
+        };
+        if (updatedData.checkConfig === null) { payload.checkConfig = null; }
 
-    // --- Advanced Check Logic (from api-check-b.html) ---
+        try {
+            await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify(payload) });
+            Object.assign(keyToUpdate, updatedData);
+            renderKeys(allLoadedKeys);
+            showToast('Đã lưu thay đổi.');
+        } catch (error) {
+            showToast(`Lỗi cập nhật: ${error.message}.`);
+            await loadKeys();
+        }
+    }
+
+    // --- Advanced & All Check Logic (Proxy-based) ---
     async function runAdvancedCheck(key) {
         isChecking = true;
         keyToModify = key;
@@ -664,134 +597,103 @@
 
         showModal(checkStatusModal);
         checkStatusDots.innerHTML = '';
-        checkStatusLog.innerHTML = '';
-
-        logToCheckModal('Bắt đầu kiểm tra...', 'text-yellow-300');
+        checkStatusLog.innerHTML = `<p class="text-slate-400">Bắt đầu kiểm tra...</p>`;
         
         for (let i = 0; i < requestCount; i++) {
             const dot = document.createElement('div');
             dot.id = `status-dot-${i}`;
             dot.className = 'status-dot status-pending';
-            dot.title = `Yêu cầu ${i + 1}: Đang chờ`;
             checkStatusDots.appendChild(dot);
         }
 
-        const finalUrl = keyConfig.authType === 'url' ? keyConfig.url + key.value : keyConfig.url;
-        const headers = { 'Content-Type': 'application/json' };
-        if (keyConfig.authType === 'bearer') {
-            headers['Authorization'] = `Bearer ${key.value}`;
-        }
-
-        const requestOptions = {
-            method: keyConfig.method || 'POST',
-            headers: headers,
-            provider: key.type
-        };
-
-        if (requestOptions.method !== 'GET' && keyConfig.body) {
-            requestOptions.body = JSON.stringify(keyConfig.body);
-        }
-
         for (let i = 0; i < requestCount; i++) {
-            if (!isChecking) {
-                logToCheckModal('Quá trình kiểm tra đã được người dùng dừng lại.', 'text-yellow-300');
-                break;
-            }
-            await sendSingleRequest(i, finalUrl, requestOptions);
-        }
-        isChecking = false;
-        logToCheckModal('Hoàn tất kiểm tra.', 'text-green-300');
-    }
+            if (!isChecking) { logToCheckModal('Đã dừng kiểm tra.', 'text-yellow-300'); break; }
+            
+            const dot = document.getElementById(`status-dot-${i}`);
+            const checkPayload = { key: key.value, config: keyConfig };
 
-    async function sendSingleRequest(index, url, options) {
-        const dot = document.getElementById(`status-dot-${index}`);
-        let retries = 0;
-        const maxRetries = 3;
-
-        while (retries <= maxRetries) {
             try {
-                const response = await fetch(url, options);
-                const statusText = `Yêu cầu ${index + 1}: Status ${response.status} ${response.statusText}`;
+                const result = await apiFetch('/api/check', { method: 'POST', body: JSON.stringify(checkPayload) });
+                const statusText = `Yêu cầu ${i + 1}: Status ${result.status}`;
                 dot.title = statusText;
-
-                if (response.ok) {
-                    dot.className = 'status-dot status-success';
-                    logToCheckModal(statusText, 'text-green-400');
-                } else if (response.status === 429) {
-                    dot.className = 'status-dot status-limited';
-                    logToCheckModal(statusText, 'text-red-400');
-                } else if (response.status === 503 && options.provider === 'hugging-face' && retries < maxRetries) {
-                    const responseData = await response.json();
-                    const estimatedTime = responseData.estimated_time || 5;
-                    dot.className = 'status-dot status-loading';
-                    const waitMsg = `Yêu cầu ${index + 1}: Model đang tải (503). Thử lại sau ${estimatedTime.toFixed(1)}s...`;
-                    dot.title = waitMsg;
-                    logToCheckModal(waitMsg, 'text-yellow-400');
-                    await new Promise(resolve => setTimeout(resolve, (estimatedTime + 0.5) * 1000));
-                    retries++;
-                    continue; // Skip to next iteration of the while loop
-                } else {
-                    dot.className = 'status-dot status-error';
-                    logToCheckModal(statusText, 'text-orange-400');
-                }
-                return; // Exit the while loop and function
+                if (result.isOk) { dot.className = 'status-dot status-success'; logToCheckModal(statusText, 'text-green-400'); } 
+                else if (result.status === 429) { dot.className = 'status-dot status-limited'; logToCheckModal(statusText, 'text-red-400'); } 
+                else { dot.className = 'status-dot status-error'; logToCheckModal(`${statusText} - Lỗi: ${result.error || JSON.stringify(result.data)}`, 'text-orange-400'); }
             } catch (error) {
                 dot.className = 'status-dot status-error';
-                const errorMsg = `Yêu cầu ${index + 1}: Lỗi mạng - ${error.message}`;
+                const errorMsg = `Yêu cầu ${i + 1}: Lỗi Proxy - ${error.message}`;
                 dot.title = errorMsg;
                 logToCheckModal(errorMsg, 'text-orange-400');
-                return; // Exit on network error
             }
+            await new Promise(resolve => setTimeout(resolve, 100));
         }
-        // This part is reached only if all retries for 503 error fail
-        dot.className = 'status-dot status-error';
-        const failMsg = `Yêu cầu ${index + 1}: Thất bại sau ${maxRetries} lần thử lại.`;
-        dot.title = failMsg;
-        logToCheckModal(failMsg, 'text-orange-400');
+        isChecking = false;
+        if (!checkStatusLog.textContent.includes('Đã dừng')) { logToCheckModal('Hoàn tất kiểm tra.', 'text-green-300'); }
     }
 
-    stopCheckBtn.addEventListener('click', () => {
-        isChecking = false;
-    });
+    checkAllBtn.addEventListener('click', async () => {
+        const loader = document.getElementById('check-all-loader');
+        const icon = checkAllBtn.querySelector('i');
+        icon.classList.add('hidden');
+        loader.classList.remove('hidden');
+        checkAllBtn.disabled = true;
 
+        for (const row of document.querySelectorAll('.key-row')) {
+            const key = allLoadedKeys.find(k => k.id === row.dataset.id);
+            if (!key) continue;
+
+            const statusDot = row.querySelector('.status-dot');
+            statusDot.className = 'status-dot status-checking';
+            
+            const checkPayload = { key: key.value, config: key.checkConfig || CHECK_PROVIDERS_CONFIG[key.type] || CHECK_PROVIDERS_CONFIG['unknown'], isSimpleCheck: true };
+            
+            try {
+                const result = await apiFetch('/api/check', { method: 'POST', body: JSON.stringify(checkPayload) });
+                if (result.isOk) { statusDot.className = 'status-dot status-success'; } 
+                else if (result.status === 429) { statusDot.className = 'status-dot status-limited'; } 
+                else { statusDot.className = 'status-dot status-invalid'; }
+            } catch (error) { statusDot.className = 'status-dot status-error'; }
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+
+        icon.classList.remove('hidden');
+        loader.classList.add('hidden');
+        checkAllBtn.disabled = false;
+        showToast("Đã hoàn tất kiểm tra tất cả các key.");
+    });
+    
+    stopCheckBtn.addEventListener('click', () => { isChecking = false; });
     function logToCheckModal(message, colorClass = 'text-slate-400') {
         const logEntry = document.createElement('p');
         logEntry.className = colorClass;
         logEntry.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
-        if (checkStatusLog.firstChild && checkStatusLog.firstChild.textContent.includes('Nhật ký yêu cầu')) {
-            checkStatusLog.innerHTML = '';
-        }
+        if (checkStatusLog.firstChild?.textContent.includes('Bắt đầu')) { checkStatusLog.innerHTML = ''; }
         checkStatusLog.appendChild(logEntry);
         checkStatusLog.scrollTop = checkStatusLog.scrollHeight;
     }
     
-    // --- Check Settings Modal Logic ---
+    // --- Settings Modal Logic ---
     function showSettingsModal(key) {
         keyToModify = key;
         const config = key.checkConfig || CHECK_PROVIDERS_CONFIG[key.type] || CHECK_PROVIDERS_CONFIG['unknown'];
         
-        // Populate provider select
         settingsProviderSelect.innerHTML = '';
-        Object.keys(CHECK_PROVIDERS_CONFIG).forEach(providerKey => {
+        Object.keys(CHECK_PROVIDERS_CONFIG).forEach(key => {
             const option = document.createElement('option');
-            option.value = providerKey;
-            option.textContent = CHECK_PROVIDERS_CONFIG[providerKey].name;
-            if (providerKey === key.type) {
-                option.selected = true;
-            }
+            option.value = key;
+            option.textContent = CHECK_PROVIDERS_CONFIG[key].name;
             settingsProviderSelect.appendChild(option);
         });
+        settingsProviderSelect.value = key.type || 'unknown';
 
         settingsUrlInput.value = config.url || '';
         settingsRequestsInput.value = config.requestCount || 20;
         settingsBodyTextarea.value = config.body ? JSON.stringify(config.body, null, 2) : '';
-        
         showModal(checkSettingsModal);
     }
     
     settingsProviderSelect.addEventListener('change', () => {
-        const selectedProviderKey = settingsProviderSelect.value;
-        const defaultConfig = CHECK_PROVIDERS_CONFIG[selectedProviderKey];
+        const defaultConfig = CHECK_PROVIDERS_CONFIG[settingsProviderSelect.value];
         if(defaultConfig) {
             settingsUrlInput.value = defaultConfig.url || '';
             settingsBodyTextarea.value = defaultConfig.body ? JSON.stringify(defaultConfig.body, null, 2) : '';
@@ -801,12 +703,8 @@
     saveSettingsBtn.addEventListener('click', async () => {
         if (!keyToModify) return;
         let body;
-        try {
-            body = settingsBodyTextarea.value ? JSON.parse(settingsBodyTextarea.value) : null;
-        } catch (e) {
-            showToast("Lỗi: JSON trong Request Body không hợp lệ.");
-            return;
-        }
+        try { body = settingsBodyTextarea.value ? JSON.parse(settingsBodyTextarea.value) : null; } 
+        catch (e) { showToast("Lỗi: JSON trong Request Body không hợp lệ."); return; }
 
         const newCheckConfig = {
             url: settingsUrlInput.value,
@@ -815,88 +713,42 @@
             authType: CHECK_PROVIDERS_CONFIG[keyToModify.type]?.authType || 'bearer',
             method: CHECK_PROVIDERS_CONFIG[keyToModify.type]?.method || 'POST'
         };
-
         await updateKey(keyToModify.id, { checkConfig: newCheckConfig });
         hideModal(checkSettingsModal);
     });
     
     resetSettingsBtn.addEventListener('click', async () => {
         if (!keyToModify) return;
-        // Setting checkConfig to null will make the app use the default config
         await updateKey(keyToModify.id, { checkConfig: null });
         hideModal(checkSettingsModal);
     });
 
-    // --- General Functions & Helpers ---
-    async function updateKey(keyId, updatedData) {
-        const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
-        if (!keyToUpdate) return;
-
-        // Create payload with only the fields that can be updated
-        const payload = {};
-        if (updatedData.name !== undefined) payload.name = updatedData.name;
-        if (updatedData.notes !== undefined) payload.notes = updatedData.notes;
-        if (updatedData.favorite !== undefined) payload.favorite = updatedData.favorite;
-        if (updatedData.order !== undefined) payload.order = updatedData.order;
-        if (updatedData.checkConfig !== undefined) payload.checkConfig = updatedData.checkConfig;
-
-        try {
-            await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify(payload) });
-            Object.assign(keyToUpdate, updatedData); // Update local state
-            renderKeys(allLoadedKeys);
-            showToast('Đã lưu thay đổi.');
-        } catch (error) {
-            showToast(`Lỗi cập nhật: ${error.message}. Đang khôi phục...`);
-            await loadKeys(); // Reload all on error
-        }
-    }
-    
+    // --- Helpers ---
     async function handleMove(keyId, direction) {
-        // This function needs to be adapted for the new data structure if needed
-        // For now, it should work as expected.
         const keyToMove = allLoadedKeys.find(k => k.id === keyId);
         if (!keyToMove) return;
-
-        const siblingKeys = allLoadedKeys
-            .filter(k => k.type === keyToMove.type && k.favorite === keyToMove.favorite)
-            .sort((a, b) => a.order - b.order);
-        
+        const siblingKeys = allLoadedKeys.filter(k => k.type === keyToMove.type && k.favorite === keyToMove.favorite).sort((a, b) => a.order - b.order);
         const currentIndex = siblingKeys.findIndex(k => k.id === keyId);
         let adjacentIndex = -1;
-        if (direction === 'up' && currentIndex > 0) {
-            adjacentIndex = currentIndex - 1;
-        } else if (direction === 'down' && currentIndex < siblingKeys.length - 1) {
-            adjacentIndex = currentIndex + 1;
-        }
-
+        if (direction === 'up' && currentIndex > 0) { adjacentIndex = currentIndex - 1; } 
+        else if (direction === 'down' && currentIndex < siblingKeys.length - 1) { adjacentIndex = currentIndex + 1; }
         if (adjacentIndex !== -1) {
             const adjacentKey = siblingKeys[adjacentIndex];
-            // Swap order values
             const tempOrder = keyToMove.order;
             keyToMove.order = adjacentKey.order;
             adjacentKey.order = tempOrder;
-
             renderKeys(allLoadedKeys.sort((a, b) => a.order - b.order));
-            showToast('Đang lưu thay đổi vị trí...');
-
             try {
                 await Promise.all([
                     updateKey(keyToMove.id, { order: keyToMove.order }),
                     updateKey(adjacentKey.id, { order: adjacentKey.order })
                 ]);
-            } catch (error) {
-                showToast(`Lỗi sắp xếp: ${error.message}. Đang hoàn tác...`);
-                await loadKeys();
-            }
+            } catch (error) { await loadKeys(); }
         }
     }
 
     function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => {
-            showToast('Đã sao chép vào clipboard!');
-        }, () => {
-            showToast('Lỗi: Không thể sao chép!');
-        });
+        navigator.clipboard.writeText(text).then(() => showToast('Đã sao chép!'), () => showToast('Lỗi sao chép!'));
     }
 
     function showToast(message) {
