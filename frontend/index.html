@@ -415,8 +415,13 @@
 
     document.querySelectorAll('.modal-overlay').forEach(modal => {
         modal.addEventListener('click', e => {
-            if (e.target.closest('.close-modal-btn')) hideModal(modal);
-            if (e.target === modal && modal.id !== 'check-status-modal') hideModal(modal);
+            if (e.target.closest('.close-modal-btn')) {
+                hideModal(modal);
+            }
+            // --- FIX: Only close on overlay click for non-critical modals ---
+            if (e.target === modal && !['check-status-modal', 'check-settings-modal', 'delete-confirm-modal'].includes(modal.id)) {
+                hideModal(modal);
+            }
         });
     });
 
@@ -461,6 +466,10 @@
     });
     
     async function updateKey(keyId, updatedData) {
+        // --- FIX: Preserve expanded state after update ---
+        const expandedRow = document.querySelector('.key-row.expanded');
+        const expandedKeyId = expandedRow ? expandedRow.dataset.id : null;
+
         const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
         if (!keyToUpdate) { console.error("Key not found:", keyId); return; }
         const payload = { name: keyToUpdate.name, notes: keyToUpdate.notes || '', favorite: keyToUpdate.favorite, order: keyToUpdate.order, checkConfig: keyToUpdate.checkConfig, ...updatedData };
@@ -469,6 +478,14 @@
             await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify(payload) });
             Object.assign(keyToUpdate, payload);
             renderKeys(allLoadedKeys);
+
+            if (expandedKeyId) {
+                const rowToReExpand = document.querySelector(`.key-row[data-id="${expandedKeyId}"]`);
+                if (rowToReExpand) {
+                    rowToReExpand.classList.add('expanded');
+                }
+            }
+
             showToast('Đã lưu thay đổi.');
         } catch (error) { showToast(`Lỗi cập nhật: ${error.message}.`); await loadKeys(); }
     }
