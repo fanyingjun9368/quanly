@@ -581,7 +581,7 @@
         isChecking = true;
         await fetchAccountInfo(key);
         const keyConfig = key.checkConfig || CHECK_PROVIDERS_CONFIG[key.type] || CHECK_PROVIDERS_CONFIG['unknown'];
-        const requestCount = keyConfig.requestCount || 20;
+        const requestCount = keyConfig.requestCount || 1;
 
         showModal(checkStatusModal);
         checkStatusDots.innerHTML = '';
@@ -657,7 +657,7 @@
         });
         settingsProviderSelect.value = key.type;
         settingsUrlInput.value = config.url || '';
-        settingsRequestsInput.value = config.requestCount || 20;
+        settingsRequestsInput.value = config.requestCount || 1;
         settingsBodyTextarea.value = config.body ? JSON.stringify(config.body, null, 2) : '';
         showModal(checkSettingsModal);
     }
