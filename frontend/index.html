@@ -83,6 +83,17 @@
             .api-group-table td[data-label="API Key"]:before {
                 display: none;
             }
+
+            /* Bổ sung CSS để thu gọn/mở rộng trên di động */
+            .key-row.collapsed-row td:not([data-label="Tên gợi nhớ"]) {
+                display: none !important;
+            }
+            .key-row .toggle-details-btn .fa-chevron-down {
+                transition: transform 0.3s ease;
+            }
+            .key-row.expanded-row .toggle-details-btn .fa-chevron-down {
+                transform: rotate(180deg);
+            }
         }
     </style>
 </head>
@@ -145,11 +156,17 @@
         <tr class="key-row border-b border-gray-200 hover:bg-gray-50" data-id="" data-value="" data-type="" data-favorite="" data-order="">
             <!-- Tên gợi nhớ & Yêu thích -->
             <td data-label="Tên gợi nhớ" class="px-4 py-3 align-middle">
-                <div class="flex items-center gap-3">
-                    <button title="Đánh dấu yêu thích" class="favorite-btn text-gray-400 hover:text-yellow-400 transition-colors flex-shrink-0">
-                        <i class="far fa-star text-xl"></i>
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <button title="Đánh dấu yêu thích" class="favorite-btn text-gray-400 hover:text-yellow-400 transition-colors flex-shrink-0">
+                            <i class="far fa-star text-xl"></i>
+                        </button>
+                        <span class="card-name font-semibold text-gray-800 break-words" contenteditable="true"></span>
+                    </div>
+                    <!-- Nút bật/tắt chi tiết trên di động -->
+                    <button class="toggle-details-btn p-2 text-gray-500 hover:text-gray-700 transition-colors md:hidden">
+                        <i class="fas fa-chevron-down text-sm"></i>
                     </button>
-                    <span class="card-name font-semibold text-gray-800 break-words" contenteditable="true"></span>
                 </div>
             </td>
             <!-- API Key -->
@@ -446,6 +463,12 @@
                     if (currentIndexInSubgroup === 0) moveUpBtn.disabled = true;
                     if (currentIndexInSubgroup === siblingKeys.length - 1) moveDownBtn.disabled = true;
                     updateCardStatus(row, 'unknown', 'Chưa kiểm tra');
+
+                    // Thêm class 'collapsed-row' mặc định cho mobile
+                    if (window.innerWidth <= 768) {
+                        row.classList.add('collapsed-row');
+                    }
+
                     tbody.appendChild(row);
                 });
                 keyGroupsContainer.appendChild(groupDiv);
@@ -593,6 +616,15 @@
             const keyId = row.dataset.id;
             const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
             if (!keyToUpdate) return;
+
+            // Xử lý sự kiện click nút thu gọn/mở rộng
+            if (e.target.closest('.toggle-details-btn')) {
+                row.classList.toggle('expanded-row');
+                row.classList.toggle('collapsed-row');
+                e.preventDefault(); // Ngăn chặn các sự kiện khác
+                return; // Thoát khỏi hàm để không xử lý các sự kiện khác trên hàng
+            }
+
             if (e.target.closest('.favorite-btn')) {
                 await updateKey(keyId, { favorite: !keyToUpdate.favorite });
             } else if (e.target.closest('.copy-btn')) {
