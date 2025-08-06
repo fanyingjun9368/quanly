@@ -85,7 +85,7 @@
             }
 
             /* Bổ sung CSS để thu gọn/mở rộng trên di động */
-            .key-row.collapsed-row td:not([data-label="Tên gợi nhớ"]) {
+            .key-row.collapsed-row td:not([data-label="Tên gợi nhớ"]):not([data-label="API Key"]) {
                 display: none !important;
             }
             .key-row .toggle-details-btn .fa-chevron-down {
@@ -95,11 +95,18 @@
                 transform: rotate(180deg);
             }
 
-            /* Ẩn các tiêu đề không cần thiết trên mobile */
-            .api-group-table th[scope="col"]:nth-child(3), /* Trạng thái */
-            .api-group-table th[scope="col"]:nth-child(4), /* Ghi chú */
-            .api-group-table th[scope="col"]:nth-child(5) { /* Hành động */
+            /* Ẩn tiêu đề cột trên mobile theo yêu cầu */
+            .api-group-table td[data-label="Trạng thái"]:before,
+            .api-group-table td[data-label="Ghi chú"]:before,
+            .api-group-table td[data-label="Hành động"]:before {
                 display: none;
+            }
+            /* Điều chỉnh padding cho các ô đã ẩn data-label */
+            .api-group-table td[data-label="Trạng thái"],
+            .api-group-table td[data-label="Ghi chú"],
+            .api-group-table td[data-label="Hành động"] {
+                padding-left: 0.75rem; /* Điều chỉnh lại padding */
+                text-align: left; /* Căn trái lại nội dung */
             }
         }
     </style>
@@ -110,16 +117,21 @@
             <h1 class="text-2xl md:text-3xl font-bold text-gray-900 w-full sm:w-auto mb-4 sm:mb-0">Trình Quản Lý API Key</h1>
             <div id="user-info" class="flex items-center gap-4">
                 <div class="text-right"><p id="user-name" class="font-semibold text-gray-900"></p></div>
-                <img id="user-avatar" class="w-12 h-12 rounded-full" src="" alt="User Avatar">
-                <button id="sign-out-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 rounded-lg transition text-sm">Đăng xuất</button>
-                <button id="add-new-key-header-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-lg transition text-sm flex items-center justify-center">
-                    <i class="fas fa-plus-circle mr-1"></i> Thêm Key
+                <img id="user-avatar" class="w-10 h-10 rounded-full" src="" alt="User Avatar"> <!-- Đăng xuất nhỏ lại -->
+                
+                <!-- Nút thêm API Key mới -->
+                <button id="add-new-key-header-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-lg transition duration-300 flex items-center justify-center gap-1 text-sm md:text-base">
+                    <i class="fas fa-plus-circle"></i><span class="hidden md:inline">Thêm Key</span>
                 </button>
-                <button id="check-all-header-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-lg transition text-sm flex items-center justify-center disabled:bg-gray-400">
-                    <i class="fas fa-tasks mr-1"></i>
-                    <span id="check-all-header-btn-text">Kiểm tra tất cả</span>
-                    <div id="check-all-header-loader" class="loader hidden"></div>
+
+                <!-- Nút kiểm tra tất cả -->
+                <button id="check-all-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-lg transition flex items-center justify-center gap-1 text-sm md:text-base disabled:bg-gray-400">
+                    <i class="fas fa-tasks"></i>
+                    <span id="check-all-btn-text" class="hidden md:inline">Kiểm tra tất cả</span>
+                    <div id="check-all-loader" class="loader hidden"></div>
                 </button>
+
+                <button id="sign-out-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 rounded-lg transition text-sm md:text-base">Đăng xuất</button> <!-- Đăng xuất nhỏ lại -->
             </div>
         </header>
 
@@ -130,35 +142,11 @@
         </div>
 
         <main id="app-content" class="hidden">
-            <!-- Phần thêm key mới được chuyển vào modal -->
-            <div class="bg-white p-6 rounded-xl shadow-lg mb-10 hidden" id="add-key-section-original">
-                <h2 class="text-xl font-semibold mb-4 text-gray-900">Thêm Key Mới</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="md:col-span-2">
-                        <label for="api-key-input" class="block text-sm font-medium text-gray-600 mb-1">Dán API Key vào đây</label>
-                        <div class="relative">
-                            <input type="text" id="api-key-input" placeholder="Key sẽ được tự động nhận diện..." class="w-full bg-gray-50 border-gray-300 rounded-lg py-3 pl-4 pr-10 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm">
-                            <div id="detected-api-logo" class="absolute inset-y-0 right-0 flex items-center pr-3"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <label for="key-name-input" class="block text-sm font-medium text-gray-600 mb-1">Tên gợi nhớ</label>
-                        <input type="text" id="key-name-input" placeholder="Ví dụ: Project hình ảnh" class="w-full bg-gray-50 border-gray-300 rounded-lg py-3 px-4 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
-                    </div>
-                </div>
-                <button id="add-key-btn" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                    <i class="fas fa-plus-circle mr-2"></i>Lưu Key
-                </button>
-            </div>
+            <!-- Phần thêm Key mới được chuyển vào modal -->
             <div>
                 <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
                     <h2 class="text-2xl font-semibold text-gray-900 mb-4 sm:mb-0">Danh sách API Keys</h2>
-                    <!-- Nút này đã được di chuyển lên header -->
-                    <!-- <button id="check-all-btn" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2 disabled:bg-gray-400">
-                        <i class="fas fa-tasks"></i>
-                        <span id="check-all-btn-text">Kiểm tra tất cả</span>
-                        <div id="check-all-loader" class="loader hidden"></div>
-                    </button> -->
+                    <!-- Nút kiểm tra tất cả đã được chuyển lên header -->
                 </div>
                 <!-- Vùng hiển thị các nhóm API key -->
                 <div id="key-groups-container" class="space-y-8">
@@ -186,42 +174,42 @@
                     </button>
                 </div>
             </td>
-            <!-- API Key -->
+            <!-- API Key và Trạng thái (đã gộp) -->
             <td data-label="API Key" class="px-4 py-3 align-middle">
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 mb-2 md:mb-0"> <!-- Thêm mb-2 để tạo khoảng cách với trạng thái trên mobile -->
                     <span class="card-masked-key font-mono text-sm text-gray-600"></span>
                     <button title="Sao chép key" class="copy-btn p-2 text-gray-500 hover:text-indigo-600 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0">
                         <i class="far fa-copy"></i>
                     </button>
-                    <!-- Chấm trạng thái API key mới -->
-                    <div class="status-dot flex-shrink-0 ml-2"></div>
+                </div>
+                <!-- Trạng thái được chuyển lên đây -->
+                <div class="flex items-center gap-2">
+                    <div class="status-dot flex-shrink-0"></div>
+                    <p class="card-status-text text-sm text-gray-700 font-medium break-all">Chưa kiểm tra</p>
                 </div>
             </td>
-            <!-- Trạng thái (đã ẩn tiêu đề trên mobile) -->
-            <td data-label="Trạng thái" class="px-4 py-3 align-middle">
-                <p class="card-status-text text-sm text-gray-700 font-medium break-all">Chưa kiểm tra</p>
+            <!-- Trạng thái (cột cũ, giờ ẩn đi) -->
+            <td data-label="Trạng thái" class="px-4 py-3 align-middle hidden md:table-cell">
+                <!-- Nội dung cũ -->
             </td>
-            <!-- Ghi chú (đã ẩn tiêu đề trên mobile) -->
+            <!-- Ghi chú -->
             <td data-label="Ghi chú" class="px-4 py-3 align-middle">
                 <textarea class="card-notes w-full bg-transparent p-2 rounded-lg text-sm text-gray-800 border border-transparent hover:border-gray-300 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition" rows="1" placeholder="Thêm ghi chú..."></textarea>
             </td>
-            <!-- Hành động (đã ẩn tiêu đề trên mobile) -->
+            <!-- Hành động -->
             <td data-label="Hành động" class="px-4 py-3 align-middle">
                 <div class="flex items-center justify-center gap-1 md:gap-2 action-buttons-mobile">
-                    <!-- Nút Di chuyển lên -->
-                    <button title="Di chuyển lên" class="action-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                    <!-- Move Buttons -->
+                    <button title="Di chuyển lên" class="move-up-btn btn-gradient text-white text-xs font-bold py-2 px-3 rounded-lg transition duration-300 flex items-center justify-center gap-1.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
                         <i class="fas fa-arrow-up"></i>
                     </button>
-                    <!-- Nút Di chuyển xuống -->
-                    <button title="Di chuyển xuống" class="action-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                    <button title="Di chuyển xuống" class="move-down-btn btn-gradient text-white text-xs font-bold py-2 px-3 rounded-lg transition duration-300 flex items-center justify-center gap-1.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
                         <i class="fas fa-arrow-down"></i>
                     </button>
-                    <!-- Nút Kiểm tra trạng thái -->
-                    <button class="check-btn action-btn btn-gradient text-white text-xs font-bold py-2 px-3 rounded-lg transition duration-300 flex items-center justify-center gap-1.5">
-                        <i class="fas fa-sync-alt"></i><span class="btn-text hidden md:inline">Check</span><div class="loader hidden"></div>
-                    </button>
-                    <!-- Nút Xóa -->
-                    <button title="Xóa" class="delete-btn action-btn bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 rounded-lg transition flex items-center justify-center">
+                    <!-- Check Button (giữ nguyên style) -->
+                    <button class="check-btn btn-gradient text-white text-xs font-bold py-2 px-3 rounded-lg transition duration-300 flex items-center justify-center gap-1.5"><i class="fas fa-sync-alt"></i><span class="btn-text hidden md:inline">Check</span><div class="loader hidden"></div></button>
+                    <!-- Delete Button -->
+                    <button title="Xóa" class="delete-btn btn-gradient text-white text-xs font-bold py-2 px-3 rounded-lg transition duration-300 flex items-center justify-center gap-1.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -244,32 +232,6 @@
         </div>
     </div>
     
-    <!-- Modal Thêm API Key Mới -->
-    <div id="add-key-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-            <div class="flex justify-between items-center border-b pb-3 mb-4">
-                <h3 class="text-xl font-bold text-gray-900">Thêm API Key Mới</h3>
-                <button id="close-add-key-modal-btn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
-            </div>
-            <div class="grid grid-cols-1 gap-4">
-                <div>
-                    <label for="modal-api-key-input" class="block text-sm font-medium text-gray-600 mb-1">Dán API Key vào đây</label>
-                    <div class="relative">
-                        <input type="text" id="modal-api-key-input" placeholder="Key sẽ được tự động nhận diện..." class="w-full bg-gray-50 border-gray-300 rounded-lg py-3 pl-4 pr-10 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm">
-                        <div id="modal-detected-api-logo" class="absolute inset-y-0 right-0 flex items-center pr-3"></div>
-                    </div>
-                </div>
-                <div>
-                    <label for="modal-key-name-input" class="block text-sm font-medium text-gray-600 mb-1">Tên gợi nhớ</label>
-                    <input type="text" id="modal-key-name-input" placeholder="Ví dụ: Project hình ảnh" class="w-full bg-gray-50 border-gray-300 rounded-lg py-3 px-4 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
-                </div>
-            </div>
-            <button id="modal-add-key-btn" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                <i class="fas fa-plus-circle mr-2"></i>Lưu Key
-            </button>
-        </div>
-    </div>
-
     <!-- Modal Chi tiết Trạng thái API -->
     <div id="status-details-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
@@ -294,11 +256,37 @@
         </div>
     </div>
 
+    <!-- Modal Thêm Key Mới -->
+    <div id="add-key-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-gray-900">Thêm Key Mới</h2>
+                <button id="close-add-key-modal-btn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <div class="grid grid-cols-1 gap-4">
+                <div>
+                    <label for="modal-api-key-input" class="block text-sm font-medium text-gray-600 mb-1">Dán API Key vào đây</label>
+                    <div class="relative">
+                        <input type="text" id="modal-api-key-input" placeholder="Key sẽ được tự động nhận diện..." class="w-full bg-gray-50 border-gray-300 rounded-lg py-3 pl-4 pr-10 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm">
+                        <div id="modal-detected-api-logo" class="absolute inset-y-0 right-0 flex items-center pr-3"></div>
+                    </div>
+                </div>
+                <div>
+                    <label for="modal-key-name-input" class="block text-sm font-medium text-gray-600 mb-1">Tên gợi nhớ</label>
+                    <input type="text" id="modal-key-name-input" placeholder="Ví dụ: Project hình ảnh" class="w-full bg-gray-50 border-gray-300 rounded-lg py-3 px-4 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+            </div>
+            <button id="modal-add-key-btn" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                <i class="fas fa-plus-circle mr-2"></i>Lưu Key
+            </button>
+        </div>
+    </div>
+
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
         // --- Cấu hình ---
         const GOOGLE_CLIENT_ID = '833528835955-t7pai7q2tb836dqggme3h3560n58s6au.apps.googleusercontent.com';
-        const BACKEND_URL = 'https://quanly-backen.onrender.com';
+        const BACKEND_URL = 'https://quanly-backen.onrender.com'; // Giả định backend có endpoint kiểm tra key
         let idToken = null;
         let keyIdToDelete = null;
         let allLoadedKeys = [];
@@ -309,31 +297,6 @@
             'stability-ai': { name: 'Stability AI', regex: /^sk-[A-Za-z0-9]{40,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-purple-500"><path d="M12 2L9.429 9.429 2 12l7.429 2.571L12 22l2.571-7.429L22 12l-7.429-2.571z"/></svg>`, gradient: 'from-purple-500 to-pink-500' },
             'openai': { name: 'OpenAI', regex: /^sk-[A-Za-z0-9]{20,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-teal-500"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>`, gradient: 'from-teal-500 to-cyan-500' },
         };
-
-        // Providers cho phương thức kiểm tra mới (từ api-check-b.html)
-        const newCheckProviders = {
-            gemini: {
-                url: 'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=',
-                body: { content: { parts: [{ text: "Xin chào thế giới" }] } },
-                authType: 'url'
-            },
-            huggingface: {
-                url: 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
-                body: { inputs: ["Kiểm tra giới hạn API"] },
-                authType: 'bearer'
-            },
-            stabilityai: {
-                url: 'https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image',
-                body: { text_prompts: [{ text: "A lighthouse on a cliff" }] },
-                authType: 'bearer'
-            },
-            openai: { // Thêm OpenAI vào đây để sử dụng phương thức kiểm tra mới
-                url: 'https://api.openai.com/v1/models',
-                body: {}, // OpenAI models endpoint doesn't require a body
-                authType: 'bearer'
-            }
-        };
-
 
         async function apiFetch(endpoint, options = {}) {
             if (!idToken) throw new Error("User not authenticated");
@@ -434,34 +397,70 @@
             google.accounts.id.renderButton(document.getElementById("gsi-button"), { theme: "outline", size: "large", text: "signin_with", shape: "rectangular" });
         });
 
-        // Các biến cho modal thêm key mới
+        // Các phần tử cho Modal Thêm Key Mới
         const addKeyModal = document.getElementById('add-key-modal');
+        const addNewKeyHeaderBtn = document.getElementById('add-new-key-header-btn');
         const closeAddKeyModalBtn = document.getElementById('close-add-key-modal-btn');
         const modalApiKeyInput = document.getElementById('modal-api-key-input');
         const modalKeyNameInput = document.getElementById('modal-key-name-input');
         const modalAddKeyBtn = document.getElementById('modal-add-key-btn');
         const modalDetectedApiLogo = document.getElementById('modal-detected-api-logo');
 
-        // Các biến hiện có
-        const apiKeyInput = document.getElementById('api-key-input'); // Vẫn giữ nếu có thể dùng lại logic validate
-        const keyNameInput = document.getElementById('key-name-input'); // Vẫn giữ nếu có thể dùng lại logic validate
-        const addKeyBtn = document.getElementById('add-key-btn'); // Nút thêm key cũ, hiện đã ẩn
         const keyGroupsContainer = document.getElementById('key-groups-container');
-        const detectedApiLogo = document.getElementById('detected-api-logo'); // Logo cũ, hiện đã ẩn
         const keyRowTemplate = document.getElementById('key-row-template');
-        const checkAllBtn = document.getElementById('check-all-btn'); // Nút check all cũ, hiện đã ẩn
+        const checkAllBtn = document.getElementById('check-all-btn');
         const deleteConfirmModal = document.getElementById('delete-confirm-modal');
         const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
         const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
         const statusDetailsModal = document.getElementById('status-details-modal');
         const closeModalBtn = document.getElementById('close-modal-btn');
 
-        // Nút thêm key mới trên header
-        const addNewKeyHeaderBtn = document.getElementById('add-new-key-header-btn');
-        // Nút kiểm tra tất cả trên header
-        const checkAllHeaderBtn = document.getElementById('check-all-header-btn');
-        const checkAllHeaderBtnText = document.getElementById('check-all-header-btn-text');
-        const checkAllHeaderLoader = document.getElementById('check-all-header-loader');
+        // Sự kiện mở modal thêm key
+        addNewKeyHeaderBtn.addEventListener('click', () => {
+            addKeyModal.classList.remove('hidden');
+            modalApiKeyInput.value = '';
+            modalKeyNameInput.value = '';
+            modalDetectedApiLogo.innerHTML = '';
+            modalAddKeyBtn.disabled = true;
+        });
+
+        // Sự kiện đóng modal thêm key
+        closeAddKeyModalBtn.addEventListener('click', () => {
+            addKeyModal.classList.add('hidden');
+        });
+
+        // Validate form trong modal
+        function validateModalForm() {
+            const key = modalApiKeyInput.value.trim();
+            const name = modalKeyNameInput.value.trim();
+            const type = detectApiKeyType(key);
+            modalDetectedApiLogo.innerHTML = type !== 'unknown' ? API_PROVIDERS[type].logo : '';
+            modalAddKeyBtn.disabled = !(key && name && type !== 'unknown');
+        }
+        modalApiKeyInput.addEventListener('input', validateModalForm);
+        modalKeyNameInput.addEventListener('input', validateModalForm);
+
+        // Thêm key mới từ modal
+        modalAddKeyBtn.addEventListener('click', async () => {
+            const newKey = {
+                id: crypto.randomUUID(),
+                name: modalKeyNameInput.value.trim(),
+                value: modalApiKeyInput.value.trim(),
+                type: detectApiKeyType(modalApiKeyInput.value.trim()),
+                notes: '',
+                favorite: false,
+                order: Date.now(),
+                created_at: new Date().toISOString()
+            };
+            try {
+                await apiFetch('/api/keys', { method: 'POST', body: JSON.stringify(newKey) });
+                showToast("Đã thêm key thành công!");
+                addKeyModal.classList.add('hidden'); // Đóng modal sau khi thêm
+                await loadKeys();
+            } catch (error) {
+                showToast(`Lỗi: ${error.message}`);
+            }
+        });
 
 
         async function loadKeys() {
@@ -579,76 +578,20 @@
         function detectApiKeyType(key) {
             for (const type in API_PROVIDERS) {
                 if (API_PROVIDERS[type].regex.test(key)) {
-                    // Chuyển đổi tên loại API để phù hợp với newCheckProviders
-                    if (type === 'google-ai') return 'gemini';
-                    if (type === 'hugging-face') return 'huggingface';
-                    if (type === 'stability-ai') return 'stabilityai';
-                    if (type === 'openai') return 'openai';
+                    if (type === 'openai' && API_PROVIDERS['stability-ai'].regex.test(key)) continue; 
+                    return type;
                 }
             }
             return 'unknown';
         }
 
-        function validateForm(apiKeyInputElem, keyNameInputElem, detectedApiLogoElem, addKeyBtnElem) {
-            const key = apiKeyInputElem.value.trim();
-            const name = keyNameInputElem.value.trim();
-            const type = detectApiKeyType(key);
-            
-            // Cập nhật logo hiển thị
-            const originalType = Object.keys(API_PROVIDERS).find(pType => {
-                if (pType === 'google-ai' && type === 'gemini') return true;
-                if (pType === 'hugging-face' && type === 'huggingface') return true;
-                if (pType === 'stability-ai' && type === 'stabilityai') return true;
-                if (pType === 'openai' && type === 'openai') return true;
-                return false;
-            });
+        // Loại bỏ validateForm cũ, giờ sử dụng validateModalForm
+        // apiKeyInput.addEventListener('input', validateForm);
+        // keyNameInput.addEventListener('input', validateForm);
 
-            detectedApiLogoElem.innerHTML = originalType !== undefined ? API_PROVIDERS[originalType].logo : '';
-            addKeyBtnElem.disabled = !(key && name && type !== 'unknown');
-        }
-
-        // Event listeners cho modal thêm key mới
-        modalApiKeyInput.addEventListener('input', () => validateForm(modalApiKeyInput, modalKeyNameInput, modalDetectedApiLogo, modalAddKeyBtn));
-        modalKeyNameInput.addEventListener('input', () => validateForm(modalApiKeyInput, modalKeyNameInput, modalDetectedApiLogo, modalAddKeyBtn));
-
-        // Event listener cho nút "Thêm Key" trên header
-        addNewKeyHeaderBtn.addEventListener('click', () => {
-            addKeyModal.classList.remove('hidden');
-            // Reset form khi mở modal
-            modalApiKeyInput.value = '';
-            modalKeyNameInput.value = '';
-            modalDetectedApiLogo.innerHTML = '';
-            modalAddKeyBtn.disabled = true;
-        });
-
-        // Event listener cho nút đóng modal
-        closeAddKeyModalBtn.addEventListener('click', () => {
-            addKeyModal.classList.add('hidden');
-        });
-
-        // Event listener cho nút "Lưu Key" trong modal
-        modalAddKeyBtn.addEventListener('click', async () => {
-            const newKey = {
-                id: crypto.randomUUID(),
-                name: modalKeyNameInput.value.trim(),
-                value: modalApiKeyInput.value.trim(),
-                type: detectApiKeyType(modalApiKeyInput.value.trim()),
-                notes: '',
-                favorite: false,
-                order: Date.now(),
-                created_at: new Date().toISOString()
-            };
-            try {
-                await apiFetch('/api/keys', { method: 'POST', body: JSON.stringify(newKey) });
-                showToast("Đã thêm key thành công!");
-                addKeyModal.classList.add('hidden'); // Đóng modal
-                await loadKeys();
-            } catch (error) {
-                showToast(`Lỗi: ${error.message}`);
-            }
-        });
-
-
+        // Loại bỏ addKeyBtn cũ, giờ sử dụng modalAddKeyBtn
+        // addKeyBtn.addEventListener('click', async () => { ... });
+        
         function copyToClipboard(text) {
             const textArea = document.createElement('textarea');
             textArea.value = text;
@@ -855,71 +798,78 @@
             }
         }
         
+        // Hàm kiểm tra key mới, gọi backend
         async function checkKeyStatus(row, key, type) {
             const checkBtn = row.querySelector('.check-btn');
             setButtonLoading(checkBtn, true);
             updateCardStatus(row, 'checking', 'Đang kiểm tra...');
             let result;
             try {
-                // Lấy thông tin provider từ newCheckProviders
-                const providerInfo = newCheckProviders[type];
-                if (!providerInfo) {
-                    result = { status: 'unknown', title: 'Không xác định', message: 'Loại API này không hỗ trợ kiểm tra tự động.', advice: 'Vui lòng kiểm tra thủ công tại trang chủ của nhà cung cấp.' };
+                // Giả lập cuộc gọi backend để kiểm tra key
+                // Trong thực tế, bạn sẽ gửi key và type đến backend của mình
+                // Backend sẽ gọi API của nhà cung cấp (Google, OpenAI,...) và trả về kết quả
+                const backendResponse = await fetch(`${BACKEND_URL}/api/check-key`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${idToken}`
+                    },
+                    body: JSON.stringify({ key, type })
+                });
+
+                if (backendResponse.ok) {
+                    result = await backendResponse.json();
                 } else {
-                    const finalUrl = providerInfo.authType === 'url' ? providerInfo.url + key : providerInfo.url;
-                    const headers = { 'Content-Type': 'application/json' };
-                    if (providerInfo.authType === 'bearer') {
-                        headers['Authorization'] = `Bearer ${key}`;
-                    } else if (providerInfo.authType === 'cassandra') {
-                        headers['x-cassandra-token'] = key;
-                    }
-
-                    const requestOptions = {
-                        method: 'POST',
-                        headers: headers,
-                        body: JSON.stringify(providerInfo.body),
-                        provider: type // Sử dụng type của newCheckProviders
+                    const errorData = await backendResponse.json();
+                    result = { 
+                        status: 'invalid', 
+                        title: `Lỗi Backend (${backendResponse.status})`, 
+                        message: errorData.error || 'Có lỗi xảy ra khi kiểm tra key từ backend.', 
+                        advice: 'Vui lòng kiểm tra log backend hoặc liên hệ quản trị viên.' 
                     };
-
-                    result = await sendSingleCheckRequest(finalUrl, requestOptions, type);
                 }
             } catch (error) {
-                result = { status: 'invalid', title: 'Lỗi Kết Nối', message: error.message, advice: 'Kiểm tra kết nối mạng của bạn và thử lại. Có thể do CORS hoặc lỗi từ máy chủ API.' };
-                console.error(`Error checking ${type} key:`, error);
+                result = { status: 'invalid', title: 'Lỗi Kết Nối', message: error.message, advice: 'Kiểm tra kết nối mạng của bạn hoặc URL backend.' };
+                console.error(`Error checking ${type} key via backend:`, error);
             }
             setButtonLoading(checkBtn, false);
             updateCardStatus(row, result.status, result.title);
             return result;
         }
+        
+        // Loại bỏ các hàm kiểm tra key riêng lẻ (checkGoogleKey, checkStabilityKey, checkHuggingFaceKey, checkOpenAIKey)
+        // Vì giờ đây chúng ta sẽ gọi một endpoint chung từ backend.
+        /*
+        async function getErrorMessage(response) { ... }
+        async function checkGoogleKey(key) { ... }
+        async function checkStabilityKey(key) { ... }
+        async function checkHuggingFaceKey(key) { ... }
+        async function checkOpenAIKey(key) { ... }
+        */
 
-        // Hàm gửi yêu cầu kiểm tra API key mới (từ api-check-b.html)
-        async function sendSingleCheckRequest(url, options, providerType) {
-            let retries = 0;
-            const maxRetries = 3;
+        checkAllBtn.addEventListener('click', async () => {
+            const checkAllBtnText = document.getElementById('check-all-btn-text');
+            const checkAllLoader = document.getElementById('check-all-loader');
+            checkAllBtn.disabled = true;
+            checkAllBtnText.classList.add('hidden');
+            checkAllLoader.classList.remove('hidden');
+            const allKeyRows = document.querySelectorAll('.key-row');
+            for (const row of allKeyRows) {
+                await checkKeyStatus(row, row.dataset.value, row.dataset.type);
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            checkAllBtn.disabled = false;
+            checkAllBtnText.classList.remove('hidden');
+            checkAllLoader.classList.add('hidden');
+            showToast("Đã hoàn tất kiểm tra tất cả các key.");
+        });
 
-            while (retries <= maxRetries) {
-                try {
-                    const response = await fetch(url, options);
-
-                    if (response.status === 503 && providerType === 'huggingface' && retries < maxRetries) {
-                        const responseData = await response.json();
-                        const estimatedTime = responseData.estimated_time || 5;
-                        // Không cập nhật UI dot ở đây, chỉ log
-                        console.log(`Model đang tải (503). Thử lại sau ${estimatedTime.toFixed(1)}s...`);
-                        await new Promise(resolve => setTimeout(resolve, (estimatedTime + 0.5) * 1000));
-                        retries++;
-                        continue;
-                    }
-                    
-                    let status = 'unknown';
-                    let title = `Status ${response.status}`;
-                    let message = await getErrorMessage(response);
-                    let advice = 'Không có khuyến nghị cụ thể.';
-
-                    if (response.ok) {
-                        status = 'active';
-                        title = 'Hoạt động tốt';
-                        message = 'Key hợp lệ và đang hoạt động.';
-                        advice = 'Bạn có thể sử dụng key này.';
-
-                        // Bổ sung thông tin cụ thể cho Stability AI và Hugging F
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        }
+    </script>
+</body>
+</html>
