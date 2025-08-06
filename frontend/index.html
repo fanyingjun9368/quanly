@@ -299,6 +299,7 @@
     }
 
     function renderKeys(keysToRender) {
+        const expandedKeyIds = [...document.querySelectorAll('.key-row.expanded')].map(row => row.dataset.id);
         keyGroupsContainer.innerHTML = '';
         if (!keysToRender || keysToRender.length === 0) {
             keyGroupsContainer.innerHTML = `<p class="text-gray-500 text-center py-10">Bạn chưa có API key nào. Bấm nút <i class="fas fa-plus mx-1"></i> ở góc trên để thêm.</p>`;
@@ -353,6 +354,11 @@
                 }
 
                 keyRow.querySelectorAll('.action-btn').forEach(btn => btn.classList.add('w-10', 'h-10', 'rounded-lg', 'flex', 'items-center', 'justify-center', 'bg-gray-100', 'hover:bg-gray-200', 'transition'));
+                
+                if (expandedKeyIds.includes(key.id)) {
+                    keyRow.classList.add('expanded');
+                }
+                
                 groupGrid.appendChild(keyRow);
             });
             keyGroupsContainer.appendChild(groupGrid);
@@ -418,7 +424,6 @@
             if (e.target.closest('.close-modal-btn')) {
                 hideModal(modal);
             }
-            // --- FIX: Only close on overlay click for non-critical modals ---
             if (e.target === modal && !['check-status-modal', 'check-settings-modal', 'delete-confirm-modal'].includes(modal.id)) {
                 hideModal(modal);
             }
@@ -466,10 +471,6 @@
     });
     
     async function updateKey(keyId, updatedData) {
-        // --- FIX: Preserve expanded state after update ---
-        const expandedRow = document.querySelector('.key-row.expanded');
-        const expandedKeyId = expandedRow ? expandedRow.dataset.id : null;
-
         const keyToUpdate = allLoadedKeys.find(k => k.id === keyId);
         if (!keyToUpdate) { console.error("Key not found:", keyId); return; }
         const payload = { name: keyToUpdate.name, notes: keyToUpdate.notes || '', favorite: keyToUpdate.favorite, order: keyToUpdate.order, checkConfig: keyToUpdate.checkConfig, ...updatedData };
@@ -478,14 +479,6 @@
             await apiFetch(`/api/keys/${keyId}`, { method: 'PUT', body: JSON.stringify(payload) });
             Object.assign(keyToUpdate, payload);
             renderKeys(allLoadedKeys);
-
-            if (expandedKeyId) {
-                const rowToReExpand = document.querySelector(`.key-row[data-id="${expandedKeyId}"]`);
-                if (rowToReExpand) {
-                    rowToReExpand.classList.add('expanded');
-                }
-            }
-
             showToast('Đã lưu thay đổi.');
         } catch (error) { showToast(`Lỗi cập nhật: ${error.message}.`); await loadKeys(); }
     }
