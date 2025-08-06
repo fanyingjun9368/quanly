@@ -138,15 +138,14 @@
     <!-- MODALS -->
     <div id="add-key-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-40">
         <div class="modal-content bg-white rounded-xl shadow-xl p-6 w-full max-w-lg transform scale-95 opacity-0">
-            <div class="flex justify-between items-center mb-6"><h2 class="text-xl font-semibold text-gray-900">Thêm Key Mới</h2><button class="close-modal-btn text-gray-400 hover:text-gray-600 text-2xl">&times;</button></div>
+            <div class="flex justify-between items-center mb-6"><h2 class="text-xl font-semibold text-gray-900">Thêm Key Mới (Thông Minh)</h2><button class="close-modal-btn text-gray-400 hover:text-gray-600 text-2xl">&times;</button></div>
             <div class="space-y-4">
                 <div>
-                    <label for="api-key-input" class="block text-sm font-medium text-gray-600 mb-1">Dán API Key vào đây</label>
-                    <div class="relative"><input type="text" id="api-key-input" placeholder="Key sẽ được tự động nhận diện..." class="w-full bg-gray-50 border-gray-300 rounded-lg py-3 pl-4 pr-10 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"><div id="detected-api-logo" class="absolute inset-y-0 right-0 flex items-center pr-3"></div></div>
+                    <label for="api-input-area" class="block text-sm font-medium text-gray-600 mb-1">Dán nội dung vào đây</label>
+                    <textarea id="api-input-area" rows="5" placeholder="Dán email và các API key, mỗi mục một dòng..." class="w-full bg-gray-50 border-gray-300 rounded-lg py-3 px-4 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"></textarea>
                 </div>
-                <div><label for="key-name-input" class="block text-sm font-medium text-gray-600 mb-1">Tên gợi nhớ</label><input type="text" id="key-name-input" placeholder="Ví dụ: Project hình ảnh" class="w-full bg-gray-50 border-gray-300 rounded-lg py-3 px-4 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500"></div>
             </div>
-            <button id="add-key-btn" class="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed"><i class="fas fa-plus-circle mr-2"></i>Lưu Key</button>
+            <button id="add-key-btn" class="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed"><i class="fas fa-save mr-2"></i>Lưu tất cả</button>
         </div>
     </div>
 
@@ -213,7 +212,7 @@
 
     const appHeader = document.getElementById('app-header'), loginView = document.getElementById('login-view'), appContent = document.getElementById('app-content'), gsiButton = document.getElementById('gsi-button'), userNameEl = document.getElementById('user-name'), userAvatarEl = document.getElementById('user-avatar'), signOutBtn = document.getElementById('sign-out-btn'), addKeyModalBtn = document.getElementById('add-key-modal-btn'), checkAllBtn = document.getElementById('check-all-btn'), keyGroupsContainer = document.getElementById('key-groups-container'), keyRowTemplate = document.getElementById('key-row-template'), toast = document.getElementById('toast');
     const addKeyModal = document.getElementById('add-key-modal'), deleteConfirmModal = document.getElementById('delete-confirm-modal'), checkStatusModal = document.getElementById('check-status-modal'), checkSettingsModal = document.getElementById('check-settings-modal');
-    const apiKeyInput = document.getElementById('api-key-input'), keyNameInput = document.getElementById('key-name-input'), addKeyBtn = document.getElementById('add-key-btn'), detectedApiLogo = document.getElementById('detected-api-logo');
+    const apiInputArea = document.getElementById('api-input-area'), addKeyBtn = document.getElementById('add-key-btn');
     const checkStatusDots = document.getElementById('check-status-dots'), checkStatusLog = document.getElementById('check-status-log'), stopCheckBtn = document.querySelector('.stop-check-btn'), checkAccountInfo = document.getElementById('check-account-info');
     const settingsProviderSelect = document.getElementById('settings-provider'), settingsUrlInput = document.getElementById('settings-url'), settingsRequestsInput = document.getElementById('settings-requests'), settingsBodyTextarea = document.getElementById('settings-body'), saveSettingsBtn = document.querySelector('.save-settings-btn'), resetSettingsBtn = document.querySelector('.reset-settings-btn');
 
@@ -221,12 +220,14 @@
         'google-ai': { name: 'Google AI (Gemini)', regex: /^AIzaSy[A-Za-z0-9_-]{33}$/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-blue-500"><path d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.18,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.18,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.18,22C17.6,22 21.54,18.33 21.54,12.81C21.54,11.76 21.45,11.44 21.35,11.1Z"/></svg>` },
         'hugging-face': { name: 'Hugging Face', regex: /^hf_[A-Za-z0-9]{30,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-yellow-500"><path d="M20.25 14.183C20.25 13.202 19.431 12.383 18.45 12.383C17.469 12.383 16.65 13.202 16.65 14.183C16.65 15.164 17.469 15.983 18.45 15.983C19.431 15.983 20.25 15.164 20.25 14.183ZM15.15 14.183C15.15 13.202 14.331 12.383 13.35 12.383C12.369 12.383 11.55 13.202 11.55 14.183C11.55 15.164 12.369 15.983 13.35 15.983C14.331 15.983 15.15 15.164 15.15 14.183ZM12 2C17.523 2 22 6.477 22 12C22 17.523 17.523 22 12 22C6.477 22 2 17.523 2 12C2 6.477 6.477 2 12 2ZM12 4C7.582 4 4 7.582 4 12C4 16.418 7.582 20 12 20C16.418 20 20 16.418 20 12C20 7.582 16.418 4 12 4ZM8.85 14.183C8.85 13.202 8.031 12.383 7.05 12.383C6.069 12.383 5.25 13.202 5.25 14.183C5.25 15.164 6.069 15.983 7.05 15.983C8.031 15.983 8.85 15.164 8.85 14.183Z"/></svg>` },
         'stability-ai': { name: 'Stability AI', regex: /^sk-[A-Za-z0-9]{40,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-purple-500"><path d="M12 2L9.429 9.429 2 12l7.429 2.571L12 22l2.571-7.429L22 12l-7.429-2.571z"/></svg>` },
+        'openai': { name: 'OpenAI', regex: /^sk-[A-Za-z0-9]{20,}/, logo: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-teal-500"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>` },
     };
     
     const CHECK_PROVIDERS_CONFIG = {
         'google-ai': { name: 'Google Gemini', url: 'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=', body: { content: { parts: [{ text: "Xin chào thế giới" }] } }, authType: 'url' },
         'hugging-face': { name: 'Hugging Face', url: 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0', body: { inputs: ["Kiểm tra giới hạn API"] }, authType: 'bearer' },
         'stability-ai': { name: 'Stability AI', url: 'https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image', body: { text_prompts: [{ text: "A lighthouse on a cliff" }] }, authType: 'bearer' },
+        'openai': { name: 'OpenAI', url: 'https://api.openai.com/v1/chat/completions', body: { model: "gpt-3.5-turbo", messages: [{role: "user", content: "Say this is a test"}]}, authType: 'bearer' },
         'unknown': { name: 'Unknown/Custom', url: '', body: {}, authType: 'bearer' }
     };
 
@@ -439,24 +440,53 @@
         return 'unknown';
     }
 
-    function validateAddKeyForm() {
-        const key = apiKeyInput.value.trim(), name = keyNameInput.value.trim(), type = detectApiKeyType(key);
-        detectedApiLogo.innerHTML = type !== 'unknown' && API_PROVIDERS[type] ? API_PROVIDERS[type].logo : '';
-        addKeyBtn.disabled = !(key && name);
-    }
-    apiKeyInput.addEventListener('input', validateAddKeyForm);
-    keyNameInput.addEventListener('input', validateAddKeyForm);
+    apiInputArea.addEventListener('input', () => {
+        addKeyBtn.disabled = apiInputArea.value.trim() === '';
+    });
 
     addKeyBtn.addEventListener('click', async () => {
-        const newKey = { id: crypto.randomUUID(), name: keyNameInput.value.trim(), value: apiKeyInput.value.trim(), type: detectApiKeyType(apiKeyInput.value.trim()), notes: '', favorite: false, order: Date.now(), checkConfig: null };
+        const text = apiInputArea.value;
+        const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+        if (lines.length === 0) return;
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const emailLine = lines.find(line => emailRegex.test(line));
+        
+        const keyLines = lines.filter(line => !emailRegex.test(line));
+
+        const newKeys = keyLines.map(keyLine => {
+            const type = detectApiKeyType(keyLine);
+            if (type === 'unknown') return null;
+            return {
+                id: crypto.randomUUID(),
+                name: emailLine ? `${emailLine} ${keyLine.substring(0, 10)}...` : keyLine,
+                value: keyLine,
+                type: type,
+                notes: '',
+                favorite: false,
+                order: Date.now() + Math.random(),
+                checkConfig: null
+            };
+        }).filter(Boolean);
+
+        if (newKeys.length === 0) {
+            showToast("Không tìm thấy API key hợp lệ nào.");
+            return;
+        }
+
+        addKeyBtn.disabled = true;
         try {
-            await apiFetch('/api/keys', { method: 'POST', body: JSON.stringify(newKey) });
-            showToast("Đã thêm key thành công!");
-            apiKeyInput.value = ''; keyNameInput.value = '';
-            validateAddKeyForm();
+            const savePromises = newKeys.map(key => apiFetch('/api/keys', { method: 'POST', body: JSON.stringify(key) }));
+            await Promise.all(savePromises);
+            showToast(`Đã lưu thành công ${newKeys.length} key mới!`);
+            apiInputArea.value = '';
             hideModal(addKeyModal);
             await loadKeys();
-        } catch (error) { showToast(`Lỗi: ${error.message}`); }
+        } catch (error) {
+            showToast(`Lỗi khi lưu: ${error.message}`);
+        } finally {
+            addKeyBtn.disabled = false;
+        }
     });
 
     document.querySelector('.cancel-delete-btn').addEventListener('click', () => hideModal(deleteConfirmModal));
