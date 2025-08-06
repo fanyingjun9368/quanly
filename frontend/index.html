@@ -150,14 +150,14 @@
         </div>
     </div>
 
-    <div id="delete-confirm-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+    <div id="delete-confirm-modal" data-close-on-overlay="false" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
         <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform scale-95 opacity-0">
             <h3 class="text-lg font-bold text-gray-900 mb-4">Xác nhận xóa</h3><p class="text-gray-600 mb-6">Bạn có chắc chắn muốn xóa API key này không? Hành động này không thể hoàn tác.</p>
             <div class="flex justify-end space-x-4"><button class="cancel-delete-btn py-2 px-4 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition">Hủy</button><button id="confirm-delete-btn" class="py-2 px-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">Xóa</button></div>
         </div>
     </div>
     
-    <div id="check-status-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+    <div id="check-status-modal" data-close-on-overlay="false" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
         <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-2xl transform scale-95 opacity-0 flex flex-col" style="height: 90vh; max-height: 700px;">
             <div class="flex justify-between items-center p-4 border-b rounded-t-lg bg-gray-50"><h3 class="text-xl font-bold">Kết quả Kiểm tra Nâng cao</h3><button class="close-modal-btn text-gray-400 hover:text-gray-600 text-2xl">&times;</button></div>
             <div class="p-5 overflow-y-auto modal-body space-y-4">
@@ -187,7 +187,7 @@
         </div>
     </div>
 
-    <div id="check-settings-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+    <div id="check-settings-modal" data-close-on-overlay="false" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
         <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-lg transform scale-95 opacity-0">
              <div class="flex justify-between items-center p-4 border-b"><h3 class="text-xl font-bold">Cài đặt Kiểm tra Nâng cao</h3><button class="close-modal-btn text-gray-400 hover:text-gray-600 text-2xl">&times;</button></div>
             <div class="p-5 space-y-4 modal-body overflow-y-auto max-h-[70vh]">
@@ -424,7 +424,7 @@
             if (e.target.closest('.close-modal-btn')) {
                 hideModal(modal);
             }
-            if (e.target === modal && !['check-status-modal', 'check-settings-modal', 'delete-confirm-modal'].includes(modal.id)) {
+            if (e.target === modal && modal.dataset.closeOnOverlay !== 'false') {
                 hideModal(modal);
             }
         });
@@ -676,7 +676,22 @@
         }
     }
 
-    function copyToClipboard(text) { navigator.clipboard.writeText(text).then(() => showToast('Đã sao chép!'), () => showToast('Lỗi sao chép!')); }
+    function copyToClipboard(text) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed'; 
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            showToast('Đã sao chép!');
+        } catch (err) {
+            showToast('Lỗi: Không thể sao chép!');
+        }
+        document.body.removeChild(textArea);
+    }
     function showToast(message) { toast.textContent = message; toast.classList.add('show'); setTimeout(() => { toast.classList.remove('show'); }, 3000); }
     </script>
 </body>
